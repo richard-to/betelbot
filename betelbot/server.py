@@ -5,6 +5,10 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
+topics = {
+    "betelbot_move": []
+}
+
 class BetelBotServer(TCPServer):
  
     def __init__(self, io_loop=None, ssl_options=None, **kwargs):
@@ -19,8 +23,6 @@ class BetelBotConnection(object):
  
     stream_set = set([])
     
-    subscriptions = {}
-
     def __init__(self, stream, address):
         logging.info('Received a new connection from %s', address)
         self.stream = stream
@@ -30,18 +32,31 @@ class BetelBotConnection(object):
         self.stream.read_until('\n', self._on_read_line)
  
     def _on_read_line(self, data):
-        logging.info('Reading a new line from %s', self.address)
+        logging.info('Reading a message from %s', self.address)
+        tokens = data.strip().split(" ")
+        if len(tokens) == 3 and tokens[0] == 'publish' and tokens[1] in topics:
+            logging.info('Publishing a message from %s', self.address)
+            subscribers = topics[tokens[1]]
+            for subscriber in subscribers:
+                subscriber.stream.write(data, subscriber._on_write_complete)
+        elif len(tokens) == 2 and tokens[0] == 'subscribe' and tokens[1] in topics:
+            logging.info('Subscribing to a topic from %s', self.address)
+            topics[tokens[1]].append(self)
+        
+        if not self.stream.reading():
+            self.stream.read_until('\n', self._on_read_line)
 
-        for stream in self.stream_set:
-            stream.write(data, self._on_write_complete)
- 
     def _on_write_complete(self):
-        logging.info('Writing a line to %s', self.address)
+        logging.info('Sending a message to %s', self.address)
         if not self.stream.reading():
             self.stream.read_until('\n', self._on_read_line)
  
     def _on_close(self):
         logging.info('Client quit %s', self.address)
+        for topic in topics:
+            logging.info("Unsubscribing client from %s topic from %s", topic, self.address)
+            if self in topics[topic]:
+                topics[topic].remove(self)
         self.stream_set.remove(self.stream)
 
 if __name__ == '__main__':
