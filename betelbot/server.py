@@ -13,8 +13,8 @@ from tornado.netutil import TCPServer
 from topic import msgs
 from util import signal_handler
 
-topics = dict.fromkeys(msgs.keys(), [])
-
+topics = msgs
+topicNames = dict.fromkeys(msgs.keys(), [])
 
 class BetelBotServer(TCPServer):
  
@@ -29,7 +29,7 @@ class BetelBotServer(TCPServer):
 class BetelBotConnection(object):
  
     stream_set = set([])
-    
+
     def __init__(self, stream, address):
         self.stream = stream
         self.address = address
@@ -41,14 +41,16 @@ class BetelBotConnection(object):
     def _onReadLine(self, data):
         self._logInfo('Reading a message')
         tokens = data.strip().split(" ")
-        if len(tokens) == 3 and tokens[0] == 'publish' and tokens[1] in topics:
-            self._logInfo('Publishing a message')
-            subscribers = topics[tokens[1]]
-            for subscriber in subscribers:
-                subscriber.stream.write(data, subscriber._onWriteComplete)
-        elif len(tokens) == 2 and tokens[0] == 'subscribe' and tokens[1] in topics:
+        if len(tokens) > 2 and tokens[0] == 'publish' and tokens[1] in topicNames:
+            topic = topics[tokens[1]]
+            if topic.isValid(tokens[2:]):
+                self._logInfo('Publishing a message')
+                subscribers = topicNames[tokens[1]]
+                for subscriber in subscribers:
+                    subscriber.stream.write('{}\n'.format(' '.join(tokens[1:])), subscriber._onWriteComplete)
+        elif len(tokens) == 2 and tokens[0] == 'subscribe' and tokens[1] in topicNames:
             self._logInfo('Subscribing to topic "{}"'.format(tokens[1]))
-            topics[tokens[1]].append(self)
+            topicNames[tokens[1]].append(self)
         
         if not self.stream.reading():
             self.stream.read_until('\n', self._onReadLine)
@@ -60,10 +62,10 @@ class BetelBotConnection(object):
  
     def _onClose(self):
         self._logInfo('Client quit')
-        for topic in topics:
-            if self in topics[topic]:
+        for topic in topicNames:
+            if self in topicNames[topic]:
                 self._logInfo('Unsubscribing client from topic "{}"'.format(topic))        
-                topics[topic].remove(self)
+                topicNames[topic].remove(self)
         self.stream_set.remove(self.stream)
 
     def _logInfo(self, msg):
