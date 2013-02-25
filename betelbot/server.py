@@ -1,13 +1,18 @@
-import sys, os, re
 import logging
+import os
+import re
+import signal
+import sys
 
 from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
-topics = {
-    "betelbot_move": []
-}
+from topic import msgs
+from util import signal_handler
+
+topics = msgs
+
 
 class BetelBotServer(TCPServer):
  
@@ -54,15 +59,22 @@ class BetelBotConnection(object):
     def _on_close(self):
         logging.info('Client quit %s', self.address)
         for topic in topics:
-            logging.info("Unsubscribing client from %s topic from %s", topic, self.address)
             if self in topics[topic]:
+                logging.info("Unsubscribing client from %s topic from %s", topic, self.address)
                 topics[topic].remove(self)
         self.stream_set.remove(self.stream)
 
-if __name__ == '__main__':
+
+def main():
     logger = logging.getLogger('')
     logger.setLevel(logging.INFO)
+
+    signal.signal(signal.SIGINT, signal_handler)
 
     server = BetelBotServer()
     server.listen(8888)
     IOLoop.instance().start()
+
+
+if __name__ == '__main__':
+    main()
