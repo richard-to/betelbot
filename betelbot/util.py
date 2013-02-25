@@ -18,7 +18,7 @@ def signal_handler(signal, frame):
 
 class PubSubClient:
 
-    def __init__(self, onClose, host='', port=8888):
+    def __init__(self, host='', port=8888):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         self.stream = IOStream(sock)
         self.stream.connect((host, port))
