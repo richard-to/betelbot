@@ -44,6 +44,10 @@ def main():
     thread.daemon = True
     thread.start()
 
+    print "Reading from keyboard";
+    print "---------------------------";
+    print "Use arrow keys to move.";
+
     term = NonBlockingTerm()
     term.run(lambda: onInput(client, validMoves))
 
