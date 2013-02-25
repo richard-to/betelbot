@@ -1,5 +1,6 @@
 import ConfigParser
 import logging
+import signal
 
 from tornado.ioloop import IOLoop
 
