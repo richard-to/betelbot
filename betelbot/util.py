@@ -18,23 +18,23 @@ def signal_handler(signal, frame):
 
 class PubSubClient:
 
-    def __init__(self, host='', port=8888):
+    def __init__(self, onClose, host='', port=8888):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         self.stream = IOStream(sock)
         self.stream.connect((host, port))
-        self.sub_cb = {}
+        self.subscriptionHandlers = {}
 
     def publish(self, cmd, opts):
         self.stream.write("publish {} {}\n".format(cmd, opts))
 
     def subscribe(self, cmd, callback=None):
-        self.sub_cb[cmd] = callback
+        self.subscriptionHandlers[cmd] = callback
         self.stream.write("subscribe {}\n".format(cmd))
-        self.stream.read_until("\n", self._on_read_line)
+        self.stream.read_until("\n", self._onReadLine)
 
-    def _on_read_line(self, data):
-        self.sub_cb['move'](data)
-        self.stream.read_until("\n", self._on_read_line)
+    def _onReadLine(self, data):
+        self.subscriptionHandlers['move'](data)
+        self.stream.read_until("\n", self._onReadLine)
 
     def close():
         self.stream.close()
