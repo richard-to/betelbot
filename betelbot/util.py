@@ -1,5 +1,12 @@
+import fcntl
+import os
+import select
+import signal
 import socket
-import sys
+import sys 
+import termios
+import time
+import tty
 
 from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
@@ -31,3 +38,27 @@ class PubSubClient:
 
     def close():
         self.stream.close()
+
+
+class NonBlockingTerm:
+
+    def run(self, cb):
+        signal.signal(signal.SIGINT, signal_handler)
+        
+        old_settings = termios.tcgetattr(sys.stdin)
+        
+        fd = sys.stdin.fileno()
+        fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+        fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+
+        try:
+            tty.setcbreak(sys.stdin.fileno())
+            while True:
+                time.sleep(.3)
+                if self.hasData():
+                    cb()
+        finally:
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, old_settings)
+
+    def hasData(self):
+        return select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], [])
