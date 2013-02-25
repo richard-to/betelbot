@@ -24,8 +24,8 @@ class PubSubClient:
         self.stream.connect((host, port))
         self.subscriptionHandlers = {}
 
-    def publish(self, cmd, opts):
-        self.stream.write("publish {} {}\n".format(cmd, opts))
+    def publish(self, cmd, *args):
+        self.stream.write("publish {} {}\n".format(cmd, ' '.join(args)))
 
     def subscribe(self, cmd, callback=None):
         self.subscriptionHandlers[cmd] = callback
