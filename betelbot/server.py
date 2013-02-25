@@ -1,8 +1,10 @@
+import ConfigParser
 import logging
 import os
 import re
 import signal
 import sys
+from datetime import datetime
 
 from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
@@ -11,13 +13,13 @@ from tornado.netutil import TCPServer
 from topic import msgs
 from util import signal_handler
 
-topics = msgs
+topics = dict.fromkeys(msgs.keys(), [])
 
 
 class BetelBotServer(TCPServer):
  
     def __init__(self, io_loop=None, ssl_options=None, **kwargs):
-        logging.info('BetelBot Server is running.')
+        logging.info('BetelBot Server is running')
         TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options, **kwargs)
  
     def handle_stream(self, stream, address):
@@ -29,50 +31,57 @@ class BetelBotConnection(object):
     stream_set = set([])
     
     def __init__(self, stream, address):
-        logging.info('Received a new connection from %s', address)
         self.stream = stream
         self.address = address
         self.stream_set.add(self.stream)
-        self.stream.set_close_callback(self._on_close)
-        self.stream.read_until('\n', self._on_read_line)
+        self.stream.set_close_callback(self._onClose)
+        self.stream.read_until('\n', self._onReadLine)
+        self._logInfo('Received a new connection')
  
-    def _on_read_line(self, data):
-        logging.info('Reading a message from %s', self.address)
+    def _onReadLine(self, data):
+        self._logInfo('Reading a message')
         tokens = data.strip().split(" ")
         if len(tokens) == 3 and tokens[0] == 'publish' and tokens[1] in topics:
-            logging.info('Publishing a message from %s', self.address)
+            self._logInfo('Publishing a message')
             subscribers = topics[tokens[1]]
             for subscriber in subscribers:
-                subscriber.stream.write(data, subscriber._on_write_complete)
+                subscriber.stream.write(data, subscriber._onWriteComplete)
         elif len(tokens) == 2 and tokens[0] == 'subscribe' and tokens[1] in topics:
-            logging.info('Subscribing to a topic from %s', self.address)
+            self._logInfo('Subscribing to topic "{}"'.format(tokens[1]))
             topics[tokens[1]].append(self)
         
         if not self.stream.reading():
-            self.stream.read_until('\n', self._on_read_line)
+            self.stream.read_until('\n', self._onReadLine)
 
-    def _on_write_complete(self):
-        logging.info('Sending a message to %s', self.address)
+    def _onWriteComplete(self):
+        self._logInfo('Sending message')
         if not self.stream.reading():
-            self.stream.read_until('\n', self._on_read_line)
+            self.stream.read_until('\n', self._onReadLine)
  
-    def _on_close(self):
-        logging.info('Client quit %s', self.address)
+    def _onClose(self):
+        self._logInfo('Client quit')
         for topic in topics:
             if self in topics[topic]:
-                logging.info("Unsubscribing client from %s topic from %s", topic, self.address)
+                self._logInfo('Unsubscribing client from topic "{}"'.format(topic))        
                 topics[topic].remove(self)
         self.stream_set.remove(self.stream)
 
+    def _logInfo(self, msg):
+        dt = datetime.now().strftime("%m-%d-%y %H:%M")
+        logging.info('[%s, %s]%s', self.address[0], dt, msg)
+
 
 def main():
+    config = ConfigParser.SafeConfigParser()
+    config.read('config/default.cfg')
+
     logger = logging.getLogger('')
-    logger.setLevel(logging.INFO)
+    logger.setLevel(config.get('server', 'log_level'))
 
     signal.signal(signal.SIGINT, signal_handler)
 
     server = BetelBotServer()
-    server.listen(8888)
+    server.listen(config.getint('server', 'port'))
     IOLoop.instance().start()
 
 
