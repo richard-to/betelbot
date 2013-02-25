@@ -15,5 +15,14 @@
         <script src="/static/js/vendor/underscore.js"></script>
         <script src="/static/js/vendor/backbone.js"></script>
         <script src="/static/js/vendor/bootstrap.js"></script>
+        <script>
+        $(document).ready(function () {
+            var ws = new WebSocket("ws://localhost:8888/socket");
+            ws.onmessage = function(event) {
+                $('body').append('<div>' + event.data + '</div>');
+            }
+            $('body').append('<div> Start! </div>');
+        });
+        </script>
     </body>
 </html>
