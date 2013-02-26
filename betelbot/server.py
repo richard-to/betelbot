@@ -13,8 +13,9 @@ from tornado.netutil import TCPServer
 from topic import msgs
 from util import signal_handler
 
+
 topics = msgs
-topicNames = dict.fromkeys(msgs.keys(), [])
+topicNames = dict((key,[]) for key in msgs.keys())
 
 class BetelBotServer(TCPServer):
  
@@ -28,12 +29,12 @@ class BetelBotServer(TCPServer):
 
 class BetelBotConnection(object):
  
-    stream_set = set([])
+    streamSet = set([])
 
     def __init__(self, stream, address):
         self.stream = stream
         self.address = address
-        self.stream_set.add(self.stream)
+        self.streamSet.add(self.stream)
         self.stream.set_close_callback(self._onClose)
         self.stream.read_until('\n', self._onReadLine)
         self._logInfo('Received a new connection')
@@ -66,7 +67,7 @@ class BetelBotConnection(object):
             if self in topicNames[topic]:
                 self._logInfo('Unsubscribing client from topic "{}"'.format(topic))        
                 topicNames[topic].remove(self)
-        self.stream_set.remove(self.stream)
+        self.streamSet.remove(self.stream)
 
     def _logInfo(self, msg):
         dt = datetime.now().strftime("%m-%d-%y %H:%M")
