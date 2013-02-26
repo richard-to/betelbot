@@ -12,9 +12,9 @@ def threadedLoop():
     IOLoop.instance().start()
  
 
-def onMovePublished(data=None):
+def onMovePublished(topic, data=None):
     if data:
-        print data.strip()
+        print '[{}]{}'.format(topic, ' '.join(data))
 
 
 def onInput(client, validMoves):
