@@ -25,16 +25,19 @@ class PubSubClient:
         self.subscriptionHandlers = {}
 
     def publish(self, cmd, *args):
-        self.stream.write("publish {} {}\n".format(cmd, ' '.join(args)))
+        self.stream.write("publish {} {}\n".format(cmd, ' '.join(map(str, args))))
 
     def subscribe(self, cmd, callback=None):
         self.subscriptionHandlers[cmd] = callback
         self.stream.write("subscribe {}\n".format(cmd))
-        self.stream.read_until("\n", self._onReadLine)
+        if not self.stream.reading():
+            self.stream.read_until("\n", self._onReadLine)
 
     def _onReadLine(self, data):
-        self.subscriptionHandlers['move'](data)
-        self.stream.read_until("\n", self._onReadLine)
+        tokens = data.strip().split()
+        self.subscriptionHandlers[tokens[0]](tokens[0], tokens[1:])
+        if not self.stream.reading():
+            self.stream.read_until("\n", self._onReadLine)
 
     def close():
         self.stream.close()
