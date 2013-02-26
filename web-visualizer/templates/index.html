@@ -8,20 +8,50 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="/static/css/vendor/bootstrap.css" rel="stylesheet">
         <link href="/static/css/vendor/bootstrap-responsive.css" rel="stylesheet">
+        <style>
+            div {
+                margin:10px;
+            }
+
+            #main-container div {
+                float:left;
+                padding:50px;
+                text-align:center;
+                border:1px solid #000;
+                margin:10px;
+            }
+        </style>
     </head>
     <body>
-        <div id="main-container"></div>
+        <div id="main-container">
+            <div id="box0">20%</div>
+            <div id="box1">20%</div>
+            <div id="box2">20%</div>
+            <div id="box3">20%</div>
+            <div id="box4">20%</div>
+        </div>
+        <div style="clear:both"></div>
         <script src="/static/js/vendor/jquery.js"></script>
         <script src="/static/js/vendor/underscore.js"></script>
         <script src="/static/js/vendor/backbone.js"></script>
         <script src="/static/js/vendor/bootstrap.js"></script>
         <script>
         $(document).ready(function () {
-            var ws = new WebSocket("ws://localhost:8888/socket");
+            var ws = new WebSocket("ws://localhost:8889/socket");
+            
+            ws.onopen = function(event) {
+                ws.send('subscribe histogram');
+            }
+
             ws.onmessage = function(event) {
                 $('body').append('<div>' + event.data + '</div>');
+                var values = event.data.split(" ")
+                for (var i = 0; i < values.length; i++) {
+                    $("#box" + i).html((values[i] * 100.0).toFixed(1) + "%")
+                }
             }
-            $('body').append('<div> Start! </div>');
+
+            $('body').append('<div>Listening for histogram filter data</div>');
         });
         </script>
     </body>

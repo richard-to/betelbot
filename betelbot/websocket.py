@@ -12,6 +12,8 @@ from topic import msgs
 connections = []
 
 
+subscribers = []
+
 class VizualizerWebSocket(websocket.WebSocketHandler):
 
     def open(self):
@@ -19,33 +21,31 @@ class VizualizerWebSocket(websocket.WebSocketHandler):
         connections.append(self)
 
     def on_message(self, message):
-        self.write_message(u"You said: " + message)
+        self.write_message(message)
+        if message == 'subscribe histogram':
+            subscribers.append(self)
 
     def on_close(self):
         logging.info('WebSocket closed.')
         connections.remove(self)
 
 
-def callback(data=None):
-    if data:
-        print data
+def callback(topic, data=None):
+    print data
+    for s in subscribers:
+        s.write_message(" ".join(map(str, data)))
 
 
-def main():
-    application = web.Application([
-        (r"/socket", VizualizerWebSocket),
-    ])
+config = ConfigParser.SafeConfigParser()
+config.read('config/default.cfg')
 
-    config = ConfigParser.SafeConfigParser()
-    config.read('config/default.cfg')
+client = PubSubClient('', config.getint('server', 'port'))
+client.subscribe('histogram', callback)
 
-    client = PubSubClient('', config.getint('server', 'port'))
-    client.subscribe('move', callback)
+application = web.Application([
+    (r"/socket", VizualizerWebSocket),
+])
 
-    application.listen(config.getint('websocket-server', 'port'))
-    
-    IOLoop.instance().start()
+application.listen(config.getint('websocket-server', 'port'))
 
-
-if __name__ == "__main__":
-    main()
+IOLoop.instance().start()
