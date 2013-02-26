@@ -8,9 +8,9 @@ from util import PubSubClient, signal_handler
 from topic import msgs
 
 
-def callback(data=None):
+def onTopicPublished(topic, data=None):
     if data:
-        print data.strip()
+        print '[{}]{}'.format(topic, ' '.join(data))
 
 
 def main():
@@ -20,7 +20,7 @@ def main():
     config.read('config/default.cfg')
     client = PubSubClient('', config.getint('server', 'port'))
     for msg in msgs:
-        client.subscribe(msg, callback)
+        client.subscribe(msg, onTopicPublished)
     IOLoop.instance().start()
 
 
