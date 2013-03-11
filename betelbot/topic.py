@@ -1,6 +1,6 @@
 class MoveTopic:
 
-    dataType = ('1', '2', '3', '4')
+    dataType = ('1', '2', '3', '4', '5')
 
     @staticmethod
     def isValid(data):
