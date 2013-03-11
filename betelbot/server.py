@@ -79,7 +79,7 @@ def main():
     config.read('config/default.cfg')
 
     logger = logging.getLogger('')
-    logger.setLevel(config.get('server', 'log_level'))
+    logger.setLevel(config.get('general', 'log_level'))
 
     signal.signal(signal.SIGINT, signal_handler)
 
