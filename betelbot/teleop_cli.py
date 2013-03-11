@@ -19,7 +19,9 @@ def onMovePublished(topic, data=None):
 
 def onInput(client, validMoves):
     c = sys.stdin.read(1)
-    if c == '\x1b':
+    if c == 's' and c in validMoves:
+        client.publish('move', validMoves[c])
+    elif c == '\x1b':
         try:
             c = sys.stdin.read(2)
             if c in validMoves:
@@ -37,7 +39,8 @@ def main():
         '[A': '1',
         '[B': '2',
         '[C': '3',
-        '[D': '4'
+        '[D': '4',
+        's': '5',
     }
 
     thread = threading.Thread(target=threadedLoop)
