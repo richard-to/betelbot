@@ -24,23 +24,23 @@ class PubSubClient:
         self.stream.connect((host, port))
         self.subscriptionHandlers = {}
 
-    def publish(self, cmd, *args):
-        self.stream.write("publish {} {}\n".format(cmd, ' '.join(map(str, args))))
+    def publish(self, topic, *args):
+        self.stream.write("publish {} {}\n".format(topic, ' '.join(map(str, args))))
 
-    def subscribe(self, cmd, callback=None):
-        if self.subscriptionHandlers[cmd] is None:
-            self.subscriptionHandlers[cmd] = []
-        self.subscriptionHandlers[cmd].append(callback)
-        self.stream.write("subscribe {}\n".format(cmd))
+    def subscribe(self, topic, callback=None):
+        if self.subscriptionHandlers[topic] is None:
+            self.subscriptionHandlers[topic] = []
+        self.subscriptionHandlers[topic].append(callback)
+        self.stream.write("subscribe {}\n".format(topic))
         if not self.stream.reading():
-            self.stream.read_until("\n", self._onReadLine)
+            self.stream.read_until("\n", self.onReadLine)
 
-    def _onReadLine(self, data):
+    def onReadLine(self, data):
         tokens = data.strip().split()
         for subscriber in self.subscriptionHandlers[tokens[0]]:
             subscriber(tokens[0], tokens[1:])
         if not self.stream.reading():
-            self.stream.read_until("\n", self._onReadLine)
+            self.stream.read_until("\n", self.onReadLine)
 
     def close():
         self.stream.close()
