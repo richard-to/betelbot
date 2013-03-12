@@ -1,51 +1,51 @@
-class CmdTopic:
-    id = 'cmd'
-    dataType = ('h', 'j', 'k', 'l', 's')
-    
-    @staticmethod
-    def isValid(data):
+class ValueTopic:
+    def __init__(self, id, dataType):
+        self.id = 'sense'
+        self.dataType = ('red', 'green')
+
+    def isValid(self, data):
         if len(data) == 1:
-            return data[0] in CmdTopic.dataType
+            return data[0] in self.dataType
         else:
             return False
 
 
-class MoveTopic:
-    id = 'move'
-    dataType = ('h', 'j', 'k', 'l', 's')
+class CmdTopic(ValueTopic):
 
-    @staticmethod
-    def isValid(data):
-        if len(data) == 1:
-            return data[0] in MoveTopic.dataType
-        else:
-            return False
+    def __init__(self):
+        super().__init__('cmd', ('h', 'j', 'k', 'l', 's'))
 
 
-class SenseTopic:
-    id = 'sense'
-    dataType = ('red', 'green')
+class MoveTopic(CmdTopic):
+    def __init__(self):
+        super().__init__()
+        self.id = 'move'
 
-    @staticmethod
-    def isValid(data):
-        if len(data) == 1:
-            return data[0] in SenseTopic.dataType
-        else:
-            return False
+
+class SenseTopic(ValueTopic):
+
+    def __init__(self):
+        super().__init__('sense', ('red', 'green'))
 
 
 class HistogramTopic:
-    id = 'histogram'
-    dataType = float
 
-    @staticmethod
-    def isValid(data):
+    def __init__(self):
+        self.id = 'histogram'
+        self.dataType = float
+
+    def isValid(self, data):
         return True
 
 
+cmdTopic = CmdTopic()
+moveTopic = MoveTopic()
+senseTopic = SenseTopic()
+histogramTopic = HistogramTopic()
+
 msgs = {
-    CmdTopic.id: CmdTopic,
-    MoveTopic.id: MoveTopic,
-    SenseTopic.id: SenseTopic,
-    HistogramTopic.id: HistogramTopic
+    CmdTopic.id: cmdTopic,
+    MoveTopic.id: moveTopic,
+    SenseTopic.id: senseTopic,
+    HistogramTopic.id: histogramTopic
 }
