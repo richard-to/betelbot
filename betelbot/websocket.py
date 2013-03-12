@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import ConfigParser
 import logging
 import signal
@@ -12,13 +14,13 @@ from topic import HistogramTopic
 
 
 class VizualizerWebSocket(websocket.WebSocketHandler):
-    
+
     def initialize(self, client):
         self.client = client
         self.
 
     def open(self):
-        logging.info('WebSocket connected. Subscribing to histogram topic.')
+        logging.info('WebSocket connected. Subscribing to histogram topic')
         client.subscribe(HistogramTopic.id, self.callback)
 
     def on_message(self, message):
