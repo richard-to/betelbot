@@ -10,7 +10,7 @@ from tornado.ioloop import IOLoop
 from tornado import web, websocket
 
 from util import PubSubClient, signal_handler
-from topic import HistogramTopic
+from topic import histogramTopic
 
 
 class VizualizerWebSocket(websocket.WebSocketHandler):
@@ -21,7 +21,7 @@ class VizualizerWebSocket(websocket.WebSocketHandler):
 
     def open(self):
         logging.info('WebSocket connected. Subscribing to histogram topic')
-        client.subscribe(HistogramTopic.id, self.callback)
+        client.subscribe(histogramTopic.id, self.callback)
 
     def on_message(self, message):
         self.write_message(message)
