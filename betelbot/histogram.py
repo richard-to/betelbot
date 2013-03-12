@@ -6,7 +6,7 @@ import signal
 from tornado.ioloop import IOLoop
 
 from map import simple_world
-from topic import msgs
+from topic import HistogramTopic, MoveTopic, SenseTopic
 from util import PubSubClient, signal_handler
 
 
@@ -22,24 +22,24 @@ class HistogramFilter:
         self.pExact = 0.8
         self.pOvershoot = 0.1
         self.pUndershoot = 0.1
-        self.client.subscribe('move', self.onMovePublished)
-        self.client.subscribe('sense', self.onSensePublished)
+        self.client.subscribe(MoveTopic.id, self.onMovePublished)
+        self.client.subscribe(SenseTopic.id, self.onSensePublished)
 
     def onSensePublished(self, topic, data=None):
         self.p = self.sense(self.p, data[0])
         print self.p
-        self.client.publish('histogram', *self.p)
+        self.client.publish(HistogramTopic.id, *self.p)
 
     def onMovePublished(self, topic, data=None):
         self.p = self.move(self.p, 1)
         print self.p
-        self.client.publish('histogram', *self.p)
+        self.client.publish(HistogramTopic.id, *self.p)
 
     def sense(self, p, Z):
         q=[]
         for i in range(len(p)):
             hit = (Z == self.world[i])
-            q.append(p[i] * (hit * self.pHit + (1-hit) * self.pMiss))
+            q.append(p[i] * (hit * self.pHit + (1 - hit) * self.pMiss))
         s = sum(q)
         for i in range(len(q)):
             q[i] = q[i] / s
@@ -48,9 +48,9 @@ class HistogramFilter:
     def move(self, p, U):
         q = []
         for i in range(len(p)):
-            s = self.pExact * p[(i-U) % len(p)]
-            s = s + self.pOvershoot * p[(i-U-1) % len(p)]
-            s = s + self.pUndershoot * p[(i-U+1) % len(p)]
+            s = self.pExact * p[(i - U) % len(p)]
+            s = s + self.pOvershoot * p[(i - U - 1) % len(p)]
+            s = s + self.pUndershoot * p[(i - U + 1) % len(p)]
             q.append(s)
         return q
 
