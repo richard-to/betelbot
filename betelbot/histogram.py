@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import ConfigParser
 import logging
 import random
@@ -55,12 +57,16 @@ class HistogramFilter:
         return q
 
 
-signal.signal(signal.SIGINT, signal_handler)
+def main():
+    signal.signal(signal.SIGINT, signal_handler)
 
-config = ConfigParser.SafeConfigParser()
-config.read('config/default.cfg')
+    config = ConfigParser.SafeConfigParser()
+    config.read('config/default.cfg')
 
-client = PubSubClient('', config.getint('server', 'port'))
-hFilter = HistogramFilter(client)
+    client = PubSubClient('', config.getint('server', 'port'))
+    hFilter = HistogramFilter(client)
 
-IOLoop.instance().start()
+    IOLoop.instance().start()
+
+if __name__ == '__main__':
+    main()
