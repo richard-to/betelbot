@@ -1,6 +1,7 @@
-#include <Betelbot.h>
 #include <Serial.h>
 #include <Servo.h>
+
+#include <Betelbot.h>
 
 #define PING_SWEEP_DELAY 425
 #define KEY_SCAN_LEFT 'l'

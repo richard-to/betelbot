@@ -1,5 +1,6 @@
-#include <Betelbot.h>
 #include <Servo.h>
+
+#include <Betelbot.h>
 
 int resolution = 24;
 int radius = 3.2;
