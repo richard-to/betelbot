@@ -17,6 +17,7 @@ from util import signal_handler
 topics = msgs
 topicNames = dict((key,[]) for key in msgs.keys())
 
+
 class BetelBotServer(TCPServer):
  
     def __init__(self, io_loop=None, ssl_options=None, **kwargs):
