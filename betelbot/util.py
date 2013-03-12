@@ -28,14 +28,17 @@ class PubSubClient:
         self.stream.write("publish {} {}\n".format(cmd, ' '.join(map(str, args))))
 
     def subscribe(self, cmd, callback=None):
-        self.subscriptionHandlers[cmd] = callback
+        if self.subscriptionHandlers[cmd] is None:
+            self.subscriptionHandlers[cmd] = []
+        self.subscriptionHandlers[cmd].append(callback)
         self.stream.write("subscribe {}\n".format(cmd))
         if not self.stream.reading():
             self.stream.read_until("\n", self._onReadLine)
 
     def _onReadLine(self, data):
         tokens = data.strip().split()
-        self.subscriptionHandlers[tokens[0]](tokens[0], tokens[1:])
+        for subscriber in self.subscriptionHandlers[tokens[0]]:
+            subscriber(tokens[0], tokens[1:])
         if not self.stream.reading():
             self.stream.read_until("\n", self._onReadLine)
 
