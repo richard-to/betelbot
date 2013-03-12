@@ -6,7 +6,7 @@ import signal
 from tornado.ioloop import IOLoop
 
 from map import simple_world
-from topic import msgs
+from topic import CmdTopic, MoveTopic, SenseTopic
 from util import PubSubClient, signal_handler
 
 
@@ -16,13 +16,17 @@ class RoboSim:
         self.client = client
         self.world = world
         self.real_location = random.randint(0, len(world) - 1)
-        self.client.subscribe('move', self.onMovePublished)
+        self.client.subscribe(CmdTopic.id, self.onCmdPublished)
+
+    def move(self, direction):
+        self.client.publish(MoveTopic.id, self.direction)
 
     def sense(self):
-        self.client.publish('sense', self.world[self.real_location])
+        self.client.publish(SenseTopic.id, self.world[self.real_location])
 
-    def onMovePublished(self, topic, data=None):
+    def onCmdPublished(self, topic, data=None):
         self.real_location = (self.real_location + 1) % len(self.world)
+        self.move(MoveTopic.dataType[2])
         self.sense()
 
 
