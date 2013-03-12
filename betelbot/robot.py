@@ -12,7 +12,7 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
-from topic import msgs
+from topic import cmdTopic
 from util import PubSubClient, signal_handler
 
 
@@ -42,7 +42,7 @@ class BetelBotDriverConnection(object):
         self.streamSet.add(self.stream)
 
         self.client = client
-        self.client.subscribe(CmdTopic.id, self._onCmdForBot)
+        self.client.subscribe(cmdTopic.id, self._onCmdForBot)
 
     def write(self, data):
         self.stream.write(data, self._onWriteComplete)

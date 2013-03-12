@@ -8,7 +8,7 @@ import signal
 from tornado.ioloop import IOLoop
 
 from map import simple_world
-from topic import CmdTopic, MoveTopic, SenseTopic
+from topic import cmdTopic, moveTopic, senseTopic
 from util import PubSubClient, signal_handler
 
 
@@ -18,17 +18,17 @@ class RoboSim:
         self.client = client
         self.world = world
         self.real_location = random.randint(0, len(world) - 1)
-        self.client.subscribe(CmdTopic.id, self.onCmdPublished)
+        self.client.subscribe(cmdTopic.id, self.onCmdPublished)
 
     def move(self, direction):
-        self.client.publish(MoveTopic.id, self.direction)
+        self.client.publish(moveTopic.id, self.direction)
 
     def sense(self):
-        self.client.publish(SenseTopic.id, self.world[self.real_location])
+        self.client.publish(senseTopic.id, self.world[self.real_location])
 
     def onCmdPublished(self, topic, data=None):
         self.real_location = (self.real_location + 1) % len(self.world)
-        self.move(MoveTopic.dataType[2])
+        self.move(moveTopic.dataType[2])
         self.sense()
 
 

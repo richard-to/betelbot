@@ -6,7 +6,7 @@ import threading
 
 from tornado.ioloop import IOLoop
 
-from topic import CmdTopic
+from topic import cmdTopic
 from util import PubSubClient, NonBlockingTerm
 
 
@@ -21,15 +21,15 @@ def onCmdPublished(topic, data=None):
 
 def onInput(client):
     c = sys.stdin.read(1)
-    if c in CmdTopic.dataType:
-        client.publish(CmdTopic.id, c)
+    if c in cmdTopic.dataType:
+        client.publish(cmdTopic.id, c)
 
 
 def main():
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
     client = PubSubClient('', config.getint('server', 'port'))
-    client.subscribe(CmdTopic.id, onCmdPublished)
+    client.subscribe(cmdTopic.id, onCmdPublished)
 
     thread = threading.Thread(target=threadedLoop)
     thread.daemon = True

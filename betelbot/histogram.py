@@ -8,7 +8,7 @@ import signal
 from tornado.ioloop import IOLoop
 
 from map import simple_world
-from topic import HistogramTopic, MoveTopic, SenseTopic
+from topic import histogramTopic, moveTopic, senseTopic
 from util import PubSubClient, signal_handler
 
 
@@ -24,18 +24,18 @@ class HistogramFilter:
         self.pExact = 0.8
         self.pOvershoot = 0.1
         self.pUndershoot = 0.1
-        self.client.subscribe(MoveTopic.id, self.onMovePublished)
-        self.client.subscribe(SenseTopic.id, self.onSensePublished)
+        self.client.subscribe(moveTopic.id, self.onMovePublished)
+        self.client.subscribe(senseTopic.id, self.onSensePublished)
 
     def onSensePublished(self, topic, data=None):
         self.p = self.sense(self.p, data[0])
         print self.p
-        self.client.publish(HistogramTopic.id, *self.p)
+        self.client.publish(histogramTopic.id, *self.p)
 
     def onMovePublished(self, topic, data=None):
         self.p = self.move(self.p, 1)
         print self.p
-        self.client.publish(HistogramTopic.id, *self.p)
+        self.client.publish(histogramTopic.id, *self.p)
 
     def sense(self, p, Z):
         q=[]
