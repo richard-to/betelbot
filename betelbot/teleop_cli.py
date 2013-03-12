@@ -4,7 +4,7 @@ import threading
 
 from tornado.ioloop import IOLoop
 
-from topic import msgs
+from topic import CmdTopic
 from util import PubSubClient, NonBlockingTerm
 
 
@@ -12,36 +12,22 @@ def threadedLoop():
     IOLoop.instance().start()
  
 
-def onMovePublished(topic, data=None):
+def onCmdPublished(topic, data=None):
     if data:
         print '[{}]{}'.format(topic, ' '.join(data))
 
 
-def onInput(client, validMoves):
+def onInput(client):
     c = sys.stdin.read(1)
-    if c == 's' and c in validMoves:
-        client.publish('move', validMoves[c])
-    elif c == '\x1b':
-        try:
-            c = sys.stdin.read(2)
-            if c in validMoves:
-                client.publish('move', validMoves[c])
-        except: pass
+    if c in CmdTopic.dataType:
+        client.publish(CmdTopic.id, c)
 
 
 def main():
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
     client = PubSubClient('', config.getint('server', 'port'))
-    client.subscribe('move', onMovePublished)
-
-    validMoves = {
-        '[A': '1',
-        '[B': '2',
-        '[C': '3',
-        '[D': '4',
-        's': '5',
-    }
+    client.subscribe(CmdTopic.id, onCmdPublished)
 
     thread = threading.Thread(target=threadedLoop)
     thread.daemon = True
@@ -49,10 +35,10 @@ def main():
 
     print "Reading from keyboard";
     print "---------------------------";
-    print "Use arrow keys to move.";
+    print "Use [h,j,k,l] to move and [s] to stop.";
 
     term = NonBlockingTerm()
-    term.run(lambda: onInput(client, validMoves))
+    term.run(lambda: onInput(client))
 
 if __name__ == "__main__":
     main()
