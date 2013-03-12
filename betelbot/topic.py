@@ -1,6 +1,18 @@
-class MoveTopic:
+class CmdTopic:
+    id = 'cmd'
+    dataType = ('h', 'j', 'k', 'l', 's')
+    
+    @staticmethod
+    def isValid(data):
+        if len(data) == 1:
+            return data[0] in CmdTopic.dataType
+        else:
+            return False
 
-    dataType = ('1', '2', '3', '4', '5')
+
+class MoveTopic:
+    id = 'move'
+    dataType = ('h', 'j', 'k', 'l', 's')
 
     @staticmethod
     def isValid(data):
@@ -11,7 +23,7 @@ class MoveTopic:
 
 
 class SenseTopic:
-
+    id = 'sense'
     dataType = ('red', 'green')
 
     @staticmethod
@@ -23,7 +35,7 @@ class SenseTopic:
 
 
 class HistogramTopic:
-
+    id = 'histogram'
     dataType = float
 
     @staticmethod
@@ -32,7 +44,8 @@ class HistogramTopic:
 
 
 msgs = {
-    'move': MoveTopic,
-    'sense': SenseTopic,
-    'histogram': HistogramTopic
+    CmdTopic.id: CmdTopic,
+    MoveTopic.id: MoveTopic,
+    SenseTopic.id: SenseTopic,
+    HistogramTopic.id: HistogramTopic
 }
