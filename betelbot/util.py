@@ -28,7 +28,7 @@ class PubSubClient:
         self.stream.write("publish {} {}\n".format(topic, ' '.join(map(str, args))))
 
     def subscribe(self, topic, callback=None):
-        if self.subscriptionHandlers[topic] is None:
+        if topic not in self.subscriptionHandlers:
             self.subscriptionHandlers[topic] = []
         self.subscriptionHandlers[topic].append(callback)
         self.stream.write("subscribe {}\n".format(topic))
