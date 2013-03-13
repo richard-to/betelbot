@@ -1,7 +1,7 @@
-class ValueTopic:
+class ValueTopic(object):
     def __init__(self, id, dataType):
-        self.id = 'sense'
-        self.dataType = ('red', 'green')
+        self.id = id
+        self.dataType = dataType
 
     def isValid(self, data):
         if len(data) == 1:
@@ -13,19 +13,19 @@ class ValueTopic:
 class CmdTopic(ValueTopic):
 
     def __init__(self):
-        super().__init__('cmd', ('h', 'j', 'k', 'l', 's'))
+        super(CmdTopic, self).__init__('cmd', ('h', 'j', 'k', 'l', 's'))
 
 
 class MoveTopic(CmdTopic):
     def __init__(self):
-        super().__init__()
+        super(MoveTopic, self).__init__()
         self.id = 'move'
 
 
 class SenseTopic(ValueTopic):
 
     def __init__(self):
-        super().__init__('sense', ('red', 'green'))
+        super(SenseTopic, self).__init__('sense', ('red', 'green'))
 
 
 class HistogramTopic:
@@ -44,8 +44,8 @@ senseTopic = SenseTopic()
 histogramTopic = HistogramTopic()
 
 msgs = {
-    CmdTopic.id: cmdTopic,
-    MoveTopic.id: moveTopic,
-    SenseTopic.id: senseTopic,
-    HistogramTopic.id: histogramTopic
+    cmdTopic.id: cmdTopic,
+    moveTopic.id: moveTopic,
+    senseTopic.id: senseTopic,
+    histogramTopic.id: histogramTopic
 }
