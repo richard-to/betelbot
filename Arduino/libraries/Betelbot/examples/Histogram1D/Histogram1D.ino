@@ -10,10 +10,13 @@
 #define PING_SWEEP_DELAY 450
 #define KEY_FORWARD 'k'
 
-const char* ssid = SSID;
-const char* pass = PASS;
+#define SEND_MOVE "m "
+#define SEND_SENSE "s "
+
+const char *ssid = SSID;
+const char *pass = PASS;
  
-const char* serverAddress = SERVER; 
+const char *serverAddress = SERVER; 
 const int serverPort = PORT;
 
 int resolution = 24;
@@ -76,7 +79,10 @@ void loop() {
     } else {
       isRunning = false;
       driver.stop();
+      client.print(SEND_MOVE);
+      client.println(KEY_FORWARD);
+      client.print(SEND_SENSE);
       client.println(pingTurret.scan());
     }
-  }  
+  }
 }
