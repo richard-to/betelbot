@@ -33,9 +33,9 @@ class BetelBotDriverConnection(object):
     streamSet = set([])
 
     def __init__(self, stream, address, client):
-        self._logInfo('BetelBot connected')
         self.address = address
-
+        self._logInfo('BetelBot connected')
+        
         self.stream = stream        
         self.stream.set_close_callback(self._onClose)
         self.stream.read_until('\n', self._onReadLine)
@@ -49,6 +49,7 @@ class BetelBotDriverConnection(object):
 
     def _onReadLine(self, data):
         self._logInfo('Received data')
+        print data
         if not self.stream.reading():
             self.stream.read_until('\n', self._onReadLine)
 
@@ -80,7 +81,7 @@ def main():
 
     client = PubSubClient('', config.getint('server', 'port'))
 
-    server = BetelBotDriver(client, msgs)
+    server = BetelBotDriver(client)
     server.listen(config.getint('robot', 'port'))
 
     IOLoop.instance().start()
