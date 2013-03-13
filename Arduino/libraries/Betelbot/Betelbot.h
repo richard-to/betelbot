@@ -56,7 +56,7 @@ private:
 class WheelEncoder {
 public:
     WheelEncoder();
-    void begin(int radius, int resolution, int sensorPin, int boundB, int boundW);
+    void begin(float radius, int resolution, int sensorPin, int boundB, int boundW);
     void run();
     void encode();
     void sleep();
@@ -64,7 +64,7 @@ public:
 private:
     int _status;    
     int _sensorPin;
-    int _radius;
+    float _radius;
     int _resolution;
     float _distance;    
     int _ticks;
