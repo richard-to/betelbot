@@ -17,11 +17,10 @@ class VizualizerWebSocket(websocket.WebSocketHandler):
 
     def initialize(self, client):
         self.client = client
-        self.
 
     def open(self):
         logging.info('WebSocket connected. Subscribing to histogram topic')
-        client.subscribe(histogramTopic.id, self.callback)
+        self.client.subscribe(histogramTopic.id, self.callback)
 
     def on_message(self, message):
         self.write_message(message)
