@@ -34,39 +34,39 @@ class BetelBotDriverConnection(object):
 
     def __init__(self, stream, address, client):
         self.address = address
-        self._logInfo('BetelBot connected')
-        
+        self.logInfo('BetelBot connected')
+
         self.stream = stream        
-        self.stream.set_close_callback(self._onClose)
-        self.stream.read_until('\n', self._onReadLine)
+        self.stream.set_close_callback(self.onClose)
+        self.stream.read_until('\n', self.onReadLine)
         self.streamSet.add(self.stream)
 
         self.client = client
-        self.client.subscribe(cmdTopic.id, self._onCmdForBot)
+        self.client.subscribe(cmdTopic.id, self.onCmdForBot)
 
     def write(self, data):
-        self.stream.write(data, self._onWriteComplete)
+        self.stream.write(data, self.onWriteComplete)
 
-    def _onReadLine(self, data):
-        self._logInfo('Received data')
+    def onReadLine(self, data):
+        self.logInfo('Received data')
         print data
         if not self.stream.reading():
-            self.stream.read_until('\n', self._onReadLine)
+            self.stream.read_until('\n', self.onReadLine)
 
-    def _onWriteComplete(self):
-        self._logInfo('Sending command')
+    def onWriteComplete(self):
+        self.logInfo('Sending command')
         if not self.stream.reading():
-            self.stream.read_until('\n', self._onReadLine)
+            self.stream.read_until('\n', self.onReadLine)
     
-    def _onClose(self):
-        self._logInfo('BetelBot disconnected')
+    def onClose(self):
+        self.logInfo('BetelBot disconnected')
         self.streamSet.remove(self.stream)
 
-    def _logInfo(self, msg):
+    def logInfo(self, msg):
         dt = datetime.now().strftime("%m-%d-%y %H:%M")
         logging.info('[%s, %s]%s', self.address[0], dt, msg)
 
-    def _onCmdForBot(self, topic, data=None):
+    def onCmdForBot(self, topic, data=None):
         self.write(data[0])
 
 
