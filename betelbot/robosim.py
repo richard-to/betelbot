@@ -21,7 +21,7 @@ class RoboSim:
         self.client.subscribe(cmdTopic.id, self.onCmdPublished)
 
     def move(self, direction):
-        self.client.publish(moveTopic.id, self.direction)
+        self.client.publish(moveTopic.id, direction)
 
     def sense(self):
         self.client.publish(senseTopic.id, self.world[self.real_location])
@@ -39,10 +39,7 @@ def main():
     config.read('config/default.cfg')
 
     client = PubSubClient('', config.getint('server', 'port'))
-    
     roboSim = RoboSim(client, simple_world)
-    roboSim.sense()
-
     IOLoop.instance().start()
 
 
