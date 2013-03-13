@@ -110,7 +110,7 @@ WheelEncoder::WheelEncoder() {
     _color = ENCODER_BLACK;
 }
 
-void WheelEncoder::begin(int radius, int resolution, int sensorPin, int boundB, int boundW) {
+void WheelEncoder::begin(float radius, int resolution, int sensorPin, int boundB, int boundW) {
     _sensorPin = sensorPin;
     _radius = radius;
     _resolution = resolution;
