@@ -36,9 +36,8 @@ class BetelBotConnection(object):
     topicNames = dict((key,[]) for key in msgs.keys())
 
     def __init__(self, stream, address):
-        self._logInfo('Received a new connection')
-
         self.address = address
+        self._logInfo('Received a new connection')
 
         self.stream = stream
         self.stream.set_close_callback(self.onClose)
@@ -50,18 +49,18 @@ class BetelBotConnection(object):
 
         tokens = data.strip().split(" ")
 
-        if tokens[0] == self.CMD_PUBLISH:
-            self.publish(tokens)
-        elif tokens[0] == self.CMD_SUBSCRIBE:
-            self.subscribe(tokens)
+        if len(tokens) > 2 and tokens[0] == self.CMD_PUBLISH:
+            self.publish(tokens[1], *tokens[2:])
+        elif len(tokens) == 2 and tokens[0] == self.CMD_SUBSCRIBE:
+            self.subscribe(tokens[1])
         
         if not self.stream.reading():
             self.stream.read_until('\n', self.onReadLine)
 
     def publish(self, topic, *args):
-        if tokens[0] in self.topicNames and len(args) > 0:
-            topic = topics[tokens[1]]
-            if topic.isValid(args):
+        if topic in self.topicNames and len(args) > 0:
+            topicMeta = self.topics[topic]
+            if topicMeta.isValid(args):
                 subscribers = self.topicNames[topic]
                 for subscriber in subscribers:
                     subscriber.stream.write(
@@ -71,7 +70,6 @@ class BetelBotConnection(object):
     def subscribe(self, topic):
         if topic in self.topicNames:
             self._logInfo('Subscribing to topic "{}"'.format(topic))
-
             self.topicNames[topic].append(self)
     
     def onWriteComplete(self):
