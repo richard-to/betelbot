@@ -12,7 +12,7 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
-from topic import cmdTopic
+from topic import cmdTopic, moveTopic, senseTopic
 from util import PubSubClient, signal_handler
 
 
@@ -49,7 +49,14 @@ class BetelBotDriverConnection(object):
 
     def onReadLine(self, data):
         self.logInfo('Received data')
-        print data
+        tokens = data.strip().split(" ")
+
+        if tokens[0] == 'm':
+            self.client.publish(moveTopic.id, tokens[1])
+        elif tokens[0] == 's':
+            color = 'green' if int(tokens[1]) > 30 else 'red'
+            self.client.publish(senseTopic.id, color)
+
         if not self.stream.reading():
             self.stream.read_until('\n', self.onReadLine)
 
