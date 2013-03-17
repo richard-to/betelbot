@@ -79,17 +79,28 @@ def calcDistanceMapUp(map, wallByte):
     return np.fliplr(dMap).transpose()
 
 
+def writeMapData(filename, data):
+    file = open(filename, 'w')
+    file.write(data)
+    file.close()
+
+
 def main():    
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
-    dir = config.get('map', 'dir')
-    name = config.get('map', 'name')
-    image = ''.join([dir, name])
     wallByte = config.getint('map', 'wall')
     openByte = config.getint('map', 'open')
     gridSize = config.getint('map', 'gridSize')
 
-    map = loadMap(image, gridSize)
+    dir = config.get('map', 'dir')
+    mapFile = ''.join([dir, config.get('map', 'map')])
+    gridFile = ''.join([dir, config.get('map', 'gridData')])
+    rdMapFile = ''.join([dir, config.get('map', 'rdmapData')])
+    ldMapFile = ''.join([dir, config.get('map', 'ldmapData')])
+    udMapFile = ''.join([dir, config.get('map', 'udmapData')])
+    ddMapFile = ''.join([dir, config.get('map', 'ddmapData')])
+    
+    map = loadMap(mapFile, gridSize)
 
     grid = buildGrid(map, gridSize, openByte, wallByte)
     
@@ -98,6 +109,11 @@ def main():
     udMap = calcDistanceMapUp(map, wallByte)
     ddMap = calcDistanceMapDown(map, wallByte)
 
+    writeMapData(gridFile, json.dumps(grid.tolist()))
+    writeMapData(rdMapFile, json.dumps(rdMap.tolist()))
+    writeMapData(ldMapFile, json.dumps(ldMap.tolist()))
+    writeMapData(udMapFile, json.dumps(udMap.tolist()))
+    writeMapData(ddMapFile, json.dumps(ddMap.tolist()))
 
 if __name__ == '__main__':
     main()
