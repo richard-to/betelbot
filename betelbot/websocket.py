@@ -33,9 +33,6 @@ class VizualizerWebSocket(websocket.WebSocketHandler):
 
 
 def main():
-    connections = []
-    subscribers = []
-
     signal.signal(signal.SIGINT, signal_handler)
 
     config = ConfigParser.SafeConfigParser()
