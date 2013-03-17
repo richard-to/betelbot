@@ -91,29 +91,26 @@ def main():
     wallByte = config.getint('map', 'wall')
     openByte = config.getint('map', 'open')
     gridSize = config.getint('map', 'gridSize')
-
     dir = config.get('map', 'dir')
-    mapFile = ''.join([dir, config.get('map', 'map')])
-    gridFile = ''.join([dir, config.get('map', 'gridData')])
-    rdMapFile = ''.join([dir, config.get('map', 'rdmapData')])
-    ldMapFile = ''.join([dir, config.get('map', 'ldmapData')])
-    udMapFile = ''.join([dir, config.get('map', 'udmapData')])
-    ddMapFile = ''.join([dir, config.get('map', 'ddmapData')])
-    
-    map = loadMap(mapFile, gridSize)
+    mapImage = ''.join([dir, config.get('map', 'image')])
 
-    grid = buildGrid(map, gridSize, openByte, wallByte)
+    mapFiles = config.items('map-data')
+    mapData = {}
+    for key, val in mapFiles:
+        mapData[key] = {'file': ''.join([dir, val])}
     
-    rdMap = calcDistanceMapRight(map, wallByte)
-    ldMap = calcDistanceMapLeft(map, wallByte)
-    udMap = calcDistanceMapUp(map, wallByte)
-    ddMap = calcDistanceMapDown(map, wallByte)
+    map = loadMap(mapImage, gridSize)
+    mapData['map']['data'] = map
+    
+    mapData['grid']['data'] = buildGrid(map, gridSize, openByte, wallByte)
+    
+    mapData['rdmap']['data'] = calcDistanceMapRight(map, wallByte)
+    mapData['ldmap']['data'] = calcDistanceMapLeft(map, wallByte)
+    mapData['udmap']['data'] = calcDistanceMapUp(map, wallByte)
+    mapData['ddmap']['data'] = calcDistanceMapDown(map, wallByte)
 
-    writeMapData(gridFile, json.dumps(grid.tolist()))
-    writeMapData(rdMapFile, json.dumps(rdMap.tolist()))
-    writeMapData(ldMapFile, json.dumps(ldMap.tolist()))
-    writeMapData(udMapFile, json.dumps(udMap.tolist()))
-    writeMapData(ddMapFile, json.dumps(ddMap.tolist()))
+    for key in mapData:
+        writeMapData(mapData[key]['file'], json.dumps(mapData[key]['data'].tolist()))
 
 if __name__ == '__main__':
     main()
