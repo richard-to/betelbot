@@ -9,6 +9,10 @@ app.config.from_object(default)
 def index():
     return render_template('index.html')
 
+@app.route('/canvas')
+def canvas():
+    return render_template('canvas.html')
+
 @app.route('/test')
 def test():
     return render_template('test.html')

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+        <title></title>
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="/static/css/vendor/bootstrap.css" rel="stylesheet">
+        <link href="/static/css/vendor/bootstrap-responsive.css" rel="stylesheet">
+        <style>
+        </style>
+    </head>
+    <body>
+        <div id="main-container">
+            <canvas id="map" width="300" height="340">
+            </canvas>
+        </div>
+        <script src="/static/js/vendor/jquery.js"></script>
+        <script src="/static/js/vendor/underscore.js"></script>
+        <script src="/static/js/vendor/backbone.js"></script>
+        <script src="/static/js/vendor/bootstrap.js"></script>
+        <script>
+            var canvas = document.getElementById('map');
+            var ctx = canvas.getContext('2d');
+            var image = new Image();
+            image.onload = function() {
+                ctx.drawImage(this, 0, 0);
+            }
+            image.src = '/static/img/hallway.png';
+        </script>
+    </body>
+</html>
