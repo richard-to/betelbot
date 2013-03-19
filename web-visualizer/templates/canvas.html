@@ -6,28 +6,126 @@
         <title></title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link href="/static/css/vendor/bootstrap.css" rel="stylesheet">
-        <link href="/static/css/vendor/bootstrap-responsive.css" rel="stylesheet">
         <style>
         </style>
     </head>
     <body>
         <div id="main-container">
-            <canvas id="map" width="300" height="340">
+            <canvas id="map" width="600" height="680" style="padding:20px">
             </canvas>
         </div>
         <script src="/static/js/vendor/jquery.js"></script>
         <script src="/static/js/vendor/underscore.js"></script>
-        <script src="/static/js/vendor/backbone.js"></script>
-        <script src="/static/js/vendor/bootstrap.js"></script>
         <script>
-            var canvas = document.getElementById('map');
-            var ctx = canvas.getContext('2d');
-            var image = new Image();
-            image.onload = function() {
-                ctx.drawImage(this, 0, 0);
+            function drawMapImage(canvas, data, scale, opacity) {
+                opacity = opacity || 255;
+                scale = scale || 1;
+                
+                var originX = 0;
+                var originY = 0;
+                var rgbaBytes = 4;
+
+                var context = canvas.getContext('2d');
+                var imageData = context.getImageData(originX, originY, canvas.width, canvas.height);
+
+                for (var y = 0; y < canvas.height; ++y) {
+                    var index = Math.floor(y / scale);
+                    var col = y * canvas.width * rgbaBytes;
+                    _.each(data[index], function(element) {
+                        _(scale).times(function(n) { 
+                            imageData.data[col++] = element;
+                            imageData.data[col++] = element;
+                            imageData.data[col++] = element;
+                            imageData.data[col++] = opacity; 
+                        });
+                    });
+                }
+                return imageData;
             }
-            image.src = '/static/img/hallway.png';
+
+            function drawGrid(canvas, gridSize, scale) {
+                scale = scale || 1;
+                gridSize = gridSize || 20;
+
+                var color = '#aaa';
+                var originX = 0;
+                var originY = 0;
+
+                var scaledGridSize = gridSize * scale;
+                var context = canvas.getContext('2d');
+                
+                _(Math.floor(canvas.width / scaledGridSize) + 1).times(function(n) {
+                    context.beginPath();
+                    context.moveTo(n * scaledGridSize, originY);
+                    context.lineTo(n * scaledGridSize, canvas.height);
+                    context.strokeStyle = color;
+                    context.stroke();
+                });     
+                
+                _(Math.floor(canvas.height / scaledGridSize) + 1).times(function(n) {
+                    context.beginPath();
+                    context.moveTo(originX, n * scaledGridSize);
+                    context.lineTo(canvas.width, n * scaledGridSize);
+                    context.strokeStyle = color;
+                    context.stroke();
+                });
+            }
+
+            function drawParticles(canvas, particles, scale, size) {
+                scale = scale || 1;
+                size = size || 1;
+
+                var colorRgba = [255, 0, 0, 255];
+                var rgbaBytes = 4;
+
+                var scaledSize = size * scale;
+                var context = canvas.getContext('2d');
+                var imageData = context.createImageData(scaledSize, scaledSize);
+
+                _.each(imageData.data, function(element, index) {
+                    imageData.data[index] = colorRgba[index % rgbaBytes];
+                });
+
+                _.each(particles, function(element) {
+                    context.putImageData(imageData, 
+                        (element[0] * scale) - size, 
+                        (element[1] * scale) - size);        
+                });
+            }
+
+            function drawHistogramProbabilities(canvas, probabilities, gridSize, scale) {
+                scale = scale || 1;
+                gridSize = gridSize || 20;
+
+                var scaledGridSize = gridSize * scale;
+                var context = canvas.getContext('2d');
+
+                for (var y = 0; y < probabilities.length; ++y) {
+                    for (var x = 0; x < probabilities[y].length; ++x) {
+                        if (probabilities[y][x] != null) {
+                            context.font = '13px arial';
+                            context.fillStyle = '#333';
+                            context.textAlign = 'center';
+                            context.textBaseline = 'middle';
+                            context.fillText(probabilities[y][x], 
+                                gridSize + (x * scaledGridSize), 
+                                gridSize + (y * scaledGridSize));
+                        }
+                    }
+                }
+            }
+
+            var canvas = document.getElementById('map');
+            var context = canvas.getContext('2d');
+
+            $.get('/static/map.json', function(data) {
+                var imageData = drawMapImage(canvas, data, 2);
+                context.putImageData(imageData, 0, 0);
+                drawGrid(canvas, 20, 2);
+                //var  particles = [[10, 10], [40, 40]];
+                //drawParticles(canvas, particles, 2, 2);
+                drawHistogramProbabilities(canvas, [[10, null, 33], [22, 23]], 20, 2);    
+            });
         </script>
     </body>
 </html>
