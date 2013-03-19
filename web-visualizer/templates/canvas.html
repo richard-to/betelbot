@@ -107,13 +107,14 @@
                 var scaledGridSize = gridSize * scale;
                 var context = canvas.getContext('2d');
 
+                context.font = textSettings.font;
+                context.fillStyle = textSettings.fillStyle;
+                context.textAlign = textSettings.textAlign;
+                context.textBaseline = textSettings.textBaseline;
+                            
                 for (var y = 0; y < probabilities.length; ++y) {
                     for (var x = 0; x < probabilities[y].length; ++x) {
                         if (probabilities[y][x] != null) {
-                            context.font = textSettings.font;
-                            context.fillStyle = textSettings.fillStyle;
-                            context.textAlign = textSettings.center;
-                            context.textBaseline = textSettings.textBaseline;
                             context.fillText(probabilities[y][x], 
                                 gridSize + (x * scaledGridSize), 
                                 gridSize + (y * scaledGridSize));
