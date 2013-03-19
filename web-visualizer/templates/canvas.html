@@ -97,16 +97,23 @@
                 scale = scale || 1;
                 gridSize = gridSize || 20;
 
+                var textSettings = {
+                    font: '13px arial',
+                    fillStyle: '#333',
+                    textAlign: 'center',
+                    textBaseline: 'middle'
+                };
+
                 var scaledGridSize = gridSize * scale;
                 var context = canvas.getContext('2d');
 
                 for (var y = 0; y < probabilities.length; ++y) {
                     for (var x = 0; x < probabilities[y].length; ++x) {
                         if (probabilities[y][x] != null) {
-                            context.font = '13px arial';
-                            context.fillStyle = '#333';
-                            context.textAlign = 'center';
-                            context.textBaseline = 'middle';
+                            context.font = textSettings.font;
+                            context.fillStyle = textSettings.fillStyle;
+                            context.textAlign = textSettings.center;
+                            context.textBaseline = textSettings.textBaseline;
                             context.fillText(probabilities[y][x], 
                                 gridSize + (x * scaledGridSize), 
                                 gridSize + (y * scaledGridSize));
