@@ -38,14 +38,26 @@ class HistogramTopic:
         return True
 
 
+class SearchTopic:
+
+    def __init__(self):
+        self.id = 'search'
+        self.dataType = float
+
+    def isValid(self, data):
+        return True
+
+
 cmdTopic = CmdTopic()
 moveTopic = MoveTopic()
 senseTopic = SenseTopic()
 histogramTopic = HistogramTopic()
+searchTopic = SearchTopic()
 
 msgs = {
     cmdTopic.id: cmdTopic,
     moveTopic.id: moveTopic,
     senseTopic.id: senseTopic,
-    histogramTopic.id: histogramTopic
+    histogramTopic.id: histogramTopic,
+    searchTopic.id: searchTopic
 }
