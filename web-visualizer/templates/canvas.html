@@ -173,23 +173,23 @@
                     var y2 = path[i][1];
 
                     context.beginPath();
-                    context.moveTo(x1 * scaledGridSize + gridSize, y1 * scaledGridSize + gridSize);
-                    context.lineTo(x2 * scaledGridSize + gridSize, y2 * scaledGridSize + gridSize);
+                    context.moveTo(x1 * scaledGridSize + scaledGridSize/2, y1 * scaledGridSize + scaledGridSize/2);
+                    context.lineTo(x2 * scaledGridSize + scaledGridSize/2, y2 * scaledGridSize + scaledGridSize/2);
                     context.stroke();
                     context.fill();
                 }
 
                 context.beginPath();
                 context.arc(
-                    path[0][0] * scaledGridSize + gridSize,
-                    path[0][1] * scaledGridSize + gridSize, radius, 0, 2 * Math.PI, false);
+                    path[0][0] * scaledGridSize + scaledGridSize/2,
+                    path[0][1] * scaledGridSize + scaledGridSize/2, radius, 0, 2 * Math.PI, false);
                 context.fillStyle = '#0000ff';
                 context.fill();
 
                 context.beginPath();
                 context.arc(
-                    path[path.length - 1][0] * scaledGridSize + gridSize,
-                    path[path.length - 1][1] * scaledGridSize + gridSize, radius, 0, 2 * Math.PI, false);
+                    path[path.length - 1][0] * scaledGridSize + scaledGridSize/2,
+                    path[path.length - 1][1] * scaledGridSize + scaledGridSize/2, radius, 0, 2 * Math.PI, false);
                 context.fillStyle = '#0000ff';
                 context.fill();                     
             }
