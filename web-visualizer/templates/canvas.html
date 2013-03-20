@@ -93,7 +93,7 @@
                 });
             }
 
-            function drawHistogramProbabilities(canvas, probabilities, gridSize, scale) {
+            function drawProbabilities(canvas, probabilities, gridSize, scale) {
                 scale = scale || 1;
                 gridSize = gridSize || 20;
 
@@ -118,6 +118,40 @@
                             context.fillText(probabilities[y][x], 
                                 gridSize + (x * scaledGridSize), 
                                 gridSize + (y * scaledGridSize));
+                        }
+                    }
+                }
+            }
+
+            function drawHeatmap(canvas, probabilities, gridSize, scale) {
+                scale = scale || 1;
+                gridSize = gridSize || 20;
+
+                var textSettings = {
+                    font: '13px arial',
+                    fillStyle: '#333',
+                    textAlign: 'center',
+                    textBaseline: 'middle'
+                };
+
+                var scaledGridSize = gridSize * scale;
+                var context = canvas.getContext('2d');
+
+                context.font = textSettings.font;
+                context.fillStyle = textSettings.fillStyle;
+                context.textAlign = textSettings.textAlign;
+                context.textBaseline = textSettings.textBaseline;
+
+                for (var y = 0; y < probabilities.length; ++y) {
+                    for (var x = 0; x < probabilities[y].length; ++x) {
+                        if (probabilities[y][x] != null) {
+                            context.beginPath();
+                            color = Math.floor(255 * probabilities[y][x]);
+                            context.fillStyle = 'rgba(' + color + ', 0, 0, 1)';
+                            context.rect(x * scaledGridSize + 1, 
+                                y * scaledGridSize + 1, 
+                                scaledGridSize - scale, scaledGridSize - scale);
+                            context.fill();
                         }
                     }
                 }
@@ -176,15 +210,19 @@
                     context.fill();
                 }               
             }
+
             var canvas = document.getElementById('map');
             var context = canvas.getContext('2d');
 
             $.get('/static/map.json', function(data) {
                 drawMapImage(canvas, data, 2);
-                drawGrid(canvas, 20, 2);
-                drawPath(canvas, [[3,1], [3,2], [4,2]], 20, 2);
-                drawParticles(canvas, [[10, 10], [40, 40]], 2, 2);
-                drawHistogramProbabilities(canvas, [[10, null, 33], [22, 23]], 20, 2);    
+                drawGrid(canvas, 20, 2);  
+                // drawPath(canvas, [[1, 1], [3,1], [3,2], [4,2]], 20, 2);                
+                // drawHeatmap(canvas, [[.12, null, .33], [.62, .83, 1]], 20, 2); 
+                // drawLinePath(canvas,[[3,1], [3,2], [4,2]], 20, 2);
+                // drawParticles(canvas, [[10, 10], [40, 40]], 2, 2);
+                // drawProbabilities(canvas, [[10, null, 33], [22, 23]], 20, 2);
+ 
             });
         </script>
     </body>
