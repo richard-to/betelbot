@@ -123,6 +123,43 @@
                 }
             }
 
+            function drawLinePath(canvas, path, gridSize, scale) {
+                scale = scale || 1;
+                gridSize = gridSize || 20;
+
+                var radius = 2 * scale;
+                var scaledGridSize = gridSize * scale;
+                var context = canvas.getContext('2d');
+
+                context.strokeStyle = '#0000ff';
+                for (i = 1; i < path.length; i++) {
+                    var x1 = path[i - 1][0];
+                    var y1 = path[i - 1][1];
+                    var x2 = path[i][0];                    
+                    var y2 = path[i][1];
+
+                    context.beginPath();
+                    context.moveTo(x1 * scaledGridSize + gridSize, y1 * scaledGridSize + gridSize);
+                    context.lineTo(x2 * scaledGridSize + gridSize, y2 * scaledGridSize + gridSize);
+                    context.stroke();
+                    context.fill();
+                }
+
+                context.beginPath();
+                context.arc(
+                    path[0][0] * scaledGridSize + gridSize,
+                    path[0][1] * scaledGridSize + gridSize, radius, 0, 2 * Math.PI, false);
+                context.fillStyle = '#0000ff';
+                context.fill();
+
+                context.beginPath();
+                context.arc(
+                    path[path.length - 1][0] * scaledGridSize + gridSize,
+                    path[path.length - 1][1] * scaledGridSize + gridSize, radius, 0, 2 * Math.PI, false);
+                context.fillStyle = '#0000ff';
+                context.fill();                     
+            }
+
             function drawPath(canvas, path, gridSize, scale) {
                 scale = scale || 1;
                 gridSize = gridSize || 20;
