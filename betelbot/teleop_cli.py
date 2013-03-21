@@ -35,9 +35,9 @@ def main():
     thread.daemon = True
     thread.start()
 
-    print "Reading from keyboard";
-    print "---------------------------";
-    print "Use [h,j,k,l] to move and [s] to stop.";
+    print "Reading from keyboard"
+    print "---------------------------"
+    print "Use [h,j,k,l] to move and [s] to stop."
 
     term = NonBlockingTerm()
     term.run(lambda: onInput(client))
