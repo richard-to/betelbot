@@ -18,6 +18,11 @@ def signalHandler(signal, frame):
     sys.exit(0)
 
 
+class PubSubMethod:
+    PUBLISH = 'publish'
+    SUBSCRIBE = 'subscribe'
+
+
 class JsonRpcProp:
     ID = 'id'
     METHOD = 'method'
@@ -52,29 +57,35 @@ class JsonRpcEncoder:
 
 class PubSubClient:
 
-    def __init__(self, host='', port=8888):
+    def __init__(self, host='', port=8888, terminator='\0'):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         self.stream = IOStream(sock)
         self.stream.connect((host, port))
         self.subscriptionHandlers = {}
+        self.terminator = terminator
+        self.rpc = JsonRpcEncoder()
 
     def publish(self, topic, *args):
-        self.stream.write("publish {} {}\n".format(topic, ' '.join(map(str, args))))
+        self.write(self.rpc.notification(PubSubMethod.PUBLISH, topic, *args))
 
     def subscribe(self, topic, callback=None):
         if topic not in self.subscriptionHandlers:
             self.subscriptionHandlers[topic] = []
         self.subscriptionHandlers[topic].append(callback)
-        self.stream.write("subscribe {}\n".format(topic))
+        self.write(self.rpc.notification(PubSubMethod.SUBSCRIBE, topic))
         if not self.stream.reading():
-            self.stream.read_until("\n", self.onReadLine)
+            self.stream.read_until(self.terminator, self.onReadLine)
+
+    def write(self, msg):
+        self.stream.write("{}{}".format(msg, self.terminator))
 
     def onReadLine(self, data):
-        tokens = data.strip().split()
-        for subscriber in self.subscriptionHandlers[tokens[0]]:
-            subscriber(tokens[0], tokens[1:])
+        msg = json.loads(data.strip(self.terminator))
+        topic = msg[JsonRpcProp.METHOD]
+        for subscriber in self.subscriptionHandlers[topic]:
+            subscriber(topic, msg[JsonRpcProp.PARAMS])
         if not self.stream.reading():
-            self.stream.read_until("\n", self.onReadLine)
+            self.stream.read_until(self.terminator, self.onReadLine)
 
     def close():
         self.stream.close()
