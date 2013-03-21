@@ -6,7 +6,7 @@ import logging
 import random
 import signal
 
-from math import pi, cos, tan, atan2, sin
+from math import atan2, cos, exp, pi, cos, sin, sqrt, tan
 
 import cv2
 import numpy as np
