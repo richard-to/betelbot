@@ -9,7 +9,7 @@ from tornado.ioloop import IOLoop
 
 from map import simple_world
 from topic import cmdTopic, moveTopic, senseTopic
-from util import PubSubClient, signal_handler
+from util import PubSubClient, signalHandler
 
 
 class RoboSim:
@@ -33,7 +33,7 @@ class RoboSim:
 
 
 def main():
-    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGINT, signalHandler)
 
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')

@@ -14,7 +14,7 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 
 
-def signal_handler(signal, frame):
+def signalHandler(signal, frame):
     sys.exit(0)
 
 
@@ -57,7 +57,7 @@ class PubSubClient:
 class NonBlockingTerm:
 
     def run(self, cb):
-        signal.signal(signal.SIGINT, signal_handler)
+        signal.signal(signal.SIGINT, signalHandler)
         
         old_settings = termios.tcgetattr(sys.stdin)
         

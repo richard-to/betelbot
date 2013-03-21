@@ -4,7 +4,7 @@ import signal
 
 from tornado.ioloop import IOLoop
 
-from util import PubSubClient, signal_handler
+from util import PubSubClient, signalHandler
 from topic import msgs
 
 
@@ -14,7 +14,7 @@ def onTopicPublished(topic, data=None):
 
 
 def main():
-    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGINT, signalHandler)
 
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')

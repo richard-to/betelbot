@@ -9,7 +9,7 @@ from tornado.iostream import IOStream
 from tornado.ioloop import IOLoop
 from tornado import web, websocket
 
-from util import PubSubClient, signal_handler
+from util import PubSubClient, signalHandler
 from topic import histogramTopic
 
 
@@ -33,7 +33,7 @@ class VizualizerWebSocket(websocket.WebSocketHandler):
 
 
 def main():
-    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGINT, signalHandler)
 
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')

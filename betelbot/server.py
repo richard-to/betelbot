@@ -13,7 +13,7 @@ from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
 from topic import msgs
-from util import signal_handler
+from util import signalHandler
 
 
 class BetelBotServer(TCPServer):
