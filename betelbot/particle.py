@@ -124,7 +124,10 @@ class ParticleFilter:
             p.setNoise(bearingNoise, steeringNoise, steeringNoise)
             self.particles.append(p)        
     
-    def updateParticles(self, motion, measurements):
+    def getData(self):
+        return [[p.y, p.x] for p in self.particles]
+
+    def update(self, motion, measurements):
         updatedParticles = []
         for i in xrange(self.N):
             updatedParticles.append(self.particles[i].move(motion))
