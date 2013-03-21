@@ -99,12 +99,8 @@ def main():
     wallByte = config.getint('map', 'wall')
     openByte = config.getint('map', 'open')
     gridSize = config.getint('map', 'gridSize')
-    dir = config.get('map', 'dir')
-    mapImage = ''.join([dir, config.get('map', 'image')])
-
+    mapImage = config.get('map', 'image')
     mapFiles = config._sections['map-data']
-    for key in mapFiles:
-        mapFiles[key] = ''.join([dir, mapFiles[key]])
 
     map = loadMap(mapImage, gridSize)
     cv2.imwrite(mapFiles['map'], map)

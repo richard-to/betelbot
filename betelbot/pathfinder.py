@@ -104,9 +104,7 @@ def main():
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
     openByte = config.getint('map', 'open')
-    gridFile = ''.join([config.get('map', 'dir'), config.get('map-data', 'grid')])
-    grid = cv2.imread(gridFile, cv2.CV_LOAD_IMAGE_GRAYSCALE)
-    
+    grid = cv2.imread(config.get('map-data', 'grid'), cv2.CV_LOAD_IMAGE_GRAYSCALE)
     start = [int(num) for num in config.get('map', 'start').split(',')]
     goal = [int(num) for num in config.get('map', 'goal').split(',')]
 
