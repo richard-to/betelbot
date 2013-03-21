@@ -59,8 +59,8 @@ class Particle:
             error_bearing = abs(measurements[i] - predictedMeasurements[i])
             error_bearing = (error_bearing + pi) % (2.0 * pi) - pi
 
-            error *= (exp(- (error_bearing ** 2) / (self.bearing_noise ** 2) / 2.0) /  
-                      sqrt(2.0 * pi * (self.bearing_noise ** 2)))
+            error *= (exp(- (error_bearing ** 2) / (self.bearingNoise ** 2) / 2.0) /  
+                      sqrt(2.0 * pi * (self.bearingNoise ** 2)))
         return error
     
     def move(self, motion):
