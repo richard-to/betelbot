@@ -106,7 +106,7 @@ def main():
     cv2.imwrite(mapFiles['map'], map)
 
     grid = buildGrid(map, gridSize, openByte, wallByte)
-    cv2.imwrite(mapFiles['grid'], map)
+    cv2.imwrite(mapFiles['grid'], grid)
 
     dmaps = [
         calcDistanceMapUp(map, wallByte),   
