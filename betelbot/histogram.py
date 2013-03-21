@@ -9,7 +9,7 @@ from tornado.ioloop import IOLoop
 
 from map import simple_world
 from topic import histogramTopic, moveTopic, senseTopic
-from util import PubSubClient, signalHandler
+from util import BetelBotClient, signalHandler
 
 
 class HistogramFilter:
@@ -63,7 +63,7 @@ def main():
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
 
-    client = PubSubClient('', config.getint('server', 'port'))
+    client = BetelBotClient('', config.getint('server', 'port'))
     hFilter = HistogramFilter(client)
 
     IOLoop.instance().start()

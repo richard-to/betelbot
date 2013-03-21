@@ -18,10 +18,12 @@ def signalHandler(signal, frame):
     sys.exit(0)
 
 
-class PubSubMethod:
+class BetelBotMethod:
     PUBLISH = 'publish'
     SUBSCRIBE = 'subscribe'
-
+    SERVICE = 'service'
+    REQUEST = 'request'
+    RESPONSE = 'response'
 
 class JsonRpcProp:
     ID = 'id'
@@ -55,7 +57,7 @@ class JsonRpcEncoder:
         return json.dumps(msg)
 
 
-class PubSubClient:
+class BetelBotClient:
 
     def __init__(self, host='', port=8888, terminator='\0'):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -66,15 +68,24 @@ class PubSubClient:
         self.rpc = JsonRpcEncoder()
 
     def publish(self, topic, *args):
-        self.write(self.rpc.notification(PubSubMethod.PUBLISH, topic, *args))
+        self.write(self.rpc.notification(BetelBotMethod.PUBLISH, topic, *args))
 
     def subscribe(self, topic, callback=None):
         if topic not in self.subscriptionHandlers:
             self.subscriptionHandlers[topic] = []
         self.subscriptionHandlers[topic].append(callback)
-        self.write(self.rpc.notification(PubSubMethod.SUBSCRIBE, topic))
+        self.write(self.rpc.notification(BetelBotMethod.SUBSCRIBE, topic))
         if not self.stream.reading():
             self.stream.read_until(self.terminator, self.onReadLine)
+
+    def service(self, topic, *args):
+        self.write(self.rpc.notification(BetelBotMethod.SERVICE, topic, *args))
+
+    def request(self, topic, *args):
+        self.write(self.rpc.notification(BetelBotMethod.REQUEST, topic, *args))
+
+    def response(self, topic, *args):
+        self.write(self.rpc.notification(BetelBotMethod.RESPONSE, topic, *args))
 
     def write(self, msg):
         self.stream.write("{}{}".format(msg, self.terminator))

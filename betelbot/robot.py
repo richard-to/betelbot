@@ -13,7 +13,7 @@ from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
 from topic import cmdTopic, moveTopic, senseTopic
-from util import PubSubClient, signalHandler
+from util import BetelBotClient, signalHandler
 
 
 class BetelBotDriver(TCPServer):
@@ -86,7 +86,7 @@ def main():
     logger = logging.getLogger('')
     logger.setLevel(config.get('general', 'log_level'))
 
-    client = PubSubClient('', config.getint('server', 'port'))
+    client = BetelBotClient('', config.getint('server', 'port'))
 
     server = BetelBotDriver(client)
     server.listen(config.getint('robot', 'port'))

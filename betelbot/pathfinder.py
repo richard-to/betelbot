@@ -10,10 +10,18 @@ import cv2
 import numpy as np
 
 from tornado.ioloop import IOLoop
+from tornado.iostream import IOStream
+from tornado.netutil import TCPServer
 
 from map import simple_world
 from topic import searchTopic, moveTopic, senseTopic
-from util import PubSubClient, signalHandler
+from util import BetelBotClient, signalHandler
+
+
+def euclideanDistance(x, y, goalX, goalY):
+    xDist = (x - goalX)
+    yDist = (y - goalY)
+    return xDist * xDist + yDist * yDist
 
 
 class PathFinder:
@@ -92,12 +100,9 @@ class PathFinder:
         return 0
 
 
-def euclideanDistance(x, y, goalX, goalY):
-    xDist = (x - goalX)
-    yDist = (y - goalY)
-    return xDist * xDist + yDist * yDist
+def PathFinderService:
 
-
+    def 
 def main():
     signal.signal(signal.SIGINT, signalHandler)
 
@@ -108,7 +113,7 @@ def main():
     start = [int(num) for num in config.get('map', 'start').split(',')]
     goal = [int(num) for num in config.get('map', 'goal').split(',')]
 
-    # client = PubSubClient('', config.getint('server', 'port'))
+    # client = BetelBotClient('', config.getint('server', 'port'))
     pathfinder = PathFinder(grid, openByte, euclideanDistance)
     path = pathfinder.search(start, goal)
     print path

@@ -15,7 +15,7 @@ from tornado.ioloop import IOLoop
 
 from map import simple_world
 from topic import histogramTopic, moveTopic, senseTopic
-from util import PubSubClient, signalHandler
+from util import BetelBotClient, signalHandler
 
 class Particle:
 

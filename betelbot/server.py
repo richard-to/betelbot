@@ -14,7 +14,7 @@ from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
 from topic import msgs
-from util import JsonRpcEncoder, JsonRpcProp, PubSubMethod, signalHandler
+from util import JsonRpcEncoder, JsonRpcProp, BetelBotMethod, signalHandler
 
 
 class BetelBotServer(TCPServer):
@@ -49,9 +49,9 @@ class BetelBotConnection(object):
         method = msg[JsonRpcProp.METHOD]
         params = msg[JsonRpcProp.PARAMS]
         numParams = len(params)
-        if numParams > 1 and method == PubSubMethod.PUBLISH:
+        if numParams > 1 and method == BetelBotMethod.PUBLISH:
             self.publish(params[0], *params[1:])
-        elif numParams == 1 and method == PubSubMethod.SUBSCRIBE:
+        elif numParams == 1 and method == BetelBotMethod.SUBSCRIBE:
             self.subscribe(params[0])      
         if not self.stream.reading():
             self.stream.read_until(self.terminator, self.onReadLine)
