@@ -42,5 +42,6 @@ def main():
     term = NonBlockingTerm()
     term.run(lambda: onInput(client))
 
+
 if __name__ == "__main__":
     main()
