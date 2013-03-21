@@ -55,34 +55,42 @@ def calcDistanceMap(map, dMap, wallByte):
 
 def calcDistanceMapRight(map, wallByte):
     rows, cols = map.shape
-    dMap = np.tile(np.arange(cols)[::-1], (rows, 1))
+    dMap = np.tile(np.arange(cols, dtype=np.uint16)[::-1], (rows, 1))
     return calcDistanceMap(map, dMap, wallByte)
 
 
 def calcDistanceMapLeft(map, wallByte):
     rows, cols = map.shape
-    dMap = np.tile(np.arange(cols), (rows, 1))
+    dMap = np.tile(np.arange(cols, dtype=np.uint16), (rows, 1))
     dMap = calcDistanceMap(np.fliplr(map), np.fliplr(dMap), wallByte)    
     return np.fliplr(dMap)
 
 
 def calcDistanceMapDown(map, wallByte):
     rows, cols = map.shape
-    dMap = np.tile(np.arange(rows)[::-1] , (cols, 1))
+    dMap = np.tile(np.arange(rows, dtype=np.uint16)[::-1] , (cols, 1))
     return calcDistanceMap(map.transpose(), dMap, wallByte).transpose()
 
 
 def calcDistanceMapUp(map, wallByte):
     rows, cols = map.shape
-    dMap = np.tile(np.arange(rows) , (cols, 1))    
+    dMap = np.tile(np.arange(rows, dtype=np.uint16) , (cols, 1))    
     dMap = calcDistanceMap(np.fliplr(map.transpose()), np.fliplr(dMap), wallByte)
     return np.fliplr(dMap).transpose()
 
 
-def writeMapData(filename, data):
-    file = open(filename, 'w')
-    file.write(data)
-    file.close()
+def mergeDistanceMaps(dmaps):
+    mapY, mapX = dmaps[0].shape
+    count = len(dmaps)
+    size = dmaps[0].size * count * count
+    data = np.empty([size], np.uint16)
+    cols = 0
+    for y in xrange(mapY):
+        for x in xrange(mapX):
+            for m in dmaps:
+                data[cols] = m[y, x]
+                cols += 1
+    return data 
 
 
 def main():    
@@ -94,23 +102,25 @@ def main():
     dir = config.get('map', 'dir')
     mapImage = ''.join([dir, config.get('map', 'image')])
 
-    mapFiles = config.items('map-data')
-    mapData = {}
-    for key, val in mapFiles:
-        mapData[key] = {'file': ''.join([dir, val])}
-    
-    map = loadMap(mapImage, gridSize)
-    mapData['map']['data'] = map
-    
-    mapData['grid']['data'] = buildGrid(map, gridSize, openByte, wallByte)
-    
-    mapData['rdmap']['data'] = calcDistanceMapRight(map, wallByte)
-    mapData['ldmap']['data'] = calcDistanceMapLeft(map, wallByte)
-    mapData['udmap']['data'] = calcDistanceMapUp(map, wallByte)
-    mapData['ddmap']['data'] = calcDistanceMapDown(map, wallByte)
+    mapFiles = config._sections['map-data']
+    for key in mapFiles:
+        mapFiles[key] = ''.join([dir, mapFiles[key]])
 
-    for key in mapData:
-        writeMapData(mapData[key]['file'], json.dumps(mapData[key]['data'].tolist()))
+    map = loadMap(mapImage, gridSize)
+    cv2.imwrite(mapFiles['map'], map)
+
+    grid = buildGrid(map, gridSize, openByte, wallByte)
+    cv2.imwrite(mapFiles['grid'], map)
+
+    dmaps = [
+        calcDistanceMapUp(map, wallByte),   
+        calcDistanceMapLeft(map, wallByte), 
+        calcDistanceMapDown(map, wallByte),
+        calcDistanceMapRight(map, wallByte)
+    ]
+    dmap = mergeDistanceMaps(dmaps)
+    np.save(mapFiles['dmap'], dmap)
+
 
 if __name__ == '__main__':
     main()
