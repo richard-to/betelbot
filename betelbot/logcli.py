@@ -10,7 +10,7 @@ from topic import msgs
 
 def onTopicPublished(topic, data=None):
     if data:
-        print '[{}]{}'.format(topic, ' '.join(data))
+        print '[{}]{}'.format(topic, ' '.join(map(str, data)))
 
 
 def main():
