@@ -32,13 +32,13 @@ class BetelBotDriverConnection(object):
  
     streamSet = set([])
 
-    def __init__(self, stream, address, client):
+    def __init__(self, stream, address, client, terminator='\0'):
         self.address = address
         self.logInfo('BetelBot connected')
-
+        self.terminator = terminator
         self.stream = stream        
         self.stream.set_close_callback(self.onClose)
-        self.stream.read_until('\n', self.onReadLine)
+        self.stream.read_until(self.terminator, self.onReadLine)
         self.streamSet.add(self.stream)
 
         self.client = client
@@ -58,12 +58,12 @@ class BetelBotDriverConnection(object):
             self.client.publish(senseTopic.id, color)
 
         if not self.stream.reading():
-            self.stream.read_until('\n', self.onReadLine)
+            self.stream.read_until(self.terminator, self.onReadLine)
 
     def onWriteComplete(self):
         self.logInfo('Sending command')
         if not self.stream.reading():
-            self.stream.read_until('\n', self.onReadLine)
+            self.stream.read_until(self.terminator, self.onReadLine)
     
     def onClose(self):
         self.logInfo('BetelBot disconnected')
