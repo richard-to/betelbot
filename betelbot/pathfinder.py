@@ -22,7 +22,7 @@ class PathFinder:
         self.grid = grid
         self.openCell = openCell
         self.heuristic = heuristic if heuristic is not None else self.noHeuristic
-        self.delta = [[-1, 0 ], [ 0, -1], [ 1, 0 ], [ 0, 1 ]]
+        self.delta = [[-1, 0], [0, -1], [1, 0], [0, 1]]
         self.cost = cost     
 
     def search(self, start, goal):
