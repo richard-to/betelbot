@@ -6,42 +6,37 @@ import logging
 import random
 import signal
 
+import numpy as np
+
 from tornado.ioloop import IOLoop
 
 from map import simple_world
 from topic import searchTopic, moveTopic, senseTopic
-from util import PubSubClient, signal_handler
+from util import PubSubClient, signalHandler, loadGridData
 
 
 class PathFinder:
 
-    def __init__(self, client, grid, heuristic):
-        self.client = client
+    def __init__(self, grid, openCell, heuristic=None, cost=1):
         self.grid = grid
-        self.heuristic = heuristic
+        self.openCell = openCell
+        self.heuristic = heuristic if heuristic is not None else self.noHeuristic
         self.delta = [[-1, 0 ], [ 0, -1], [ 1, 0 ], [ 0, 1 ]]
-        self.cost = 1        
+        self.cost = cost     
 
     def search(self, start, goal):
-        grid = self.grid
-        heuristic = self.heuristic
-        delta = self.delta
-        cost = self.cost
-        openByte = 255
-        wallByte = 0
- 
-        path = [[' ' for row in range(len(grid[0]))] for col in range(len(grid))]       
-        closed = [[openByte for row in range(len(grid[0]))] for col in range(len(grid))]
-        closed[start[0]][start[1]] = wallByte
+        gridY, gridX = self.grid.shape        
+        closed = np.zeros(self.grid.shape, bool)
+        expand = np.empty(self.grid.shape)
+        expand.fill(-1)     
 
-        expand = [[-1 for row in range(len(grid[0]))] for col in range(len(grid))]
-
-        x = start[0]
-        y = start[1]
+        y, x = start
+        goalY, goalX = goal
         g = 0
-        f = g + heuristic(x, y, goal[0], goal[1])
-        open = [[g, x, y, f]]
-
+        f = g + self.heuristic(x, y, goalY, goalX)
+        open = [[g, y, x, f]]
+        closed[y][x] = True
+        
         found = False
         resign = False
         count = 0
@@ -49,78 +44,73 @@ class PathFinder:
         while not found and not resign:
             if len(open) == 0:
                 resign = True
-                return "Fail"
+                return False
             else:
                 open = sorted(open, key=lambda visit: visit[3], reverse=True) 
                 next = open.pop()
-                x = next[1]
-                y = next[2]
-                g = next[0]
-                f = next[3]
-                expand[x][y] = count
+                g, y, x, f = next
+                expand[y][x] = count
                 count += 1
                 
-                if x == goal[0] and y == goal[1]:
+                if y == goalY and x == goalX:
                     found = True
                 else:
-                    for i in range(len(delta)):
-                        x2 = x + delta[i][0]
-                        y2 = y + delta[i][1]
-                        if x2 >= 0 and x2 < len(grid) and y2 >= 0 and y2 < len(grid[0]):
-                            if closed[x2][y2] == openByte and grid[x2][y2] == openByte:
-                                g2 = g + cost
-                                f = g2 + heuristic(x2, y2, goal[0], goal[1])
-                                open.append([g2, x2, y2, f])
-                                closed[x2][y2] = wallByte
-        
-        px = goal[0]
-        py = goal[1]    
+                    for pos in self.delta:
+                        x2 = x + pos[1]
+                        y2 = y + pos[0]
+                        if (x2 >= 0 and x2 < gridX and y2 >= 0 and y2 < gridY and
+                                closed[y2][x2] == False and self.grid[y2][x2] == self.openCell):
+                            g2 = g + self.cost
+                            f = g2 + self.heuristic(x2, y2, goal[1], goal[0])
+                            open.append([g2, y2, x2, f])
+                            closed[y2][x2] = True
+
+        py, px = goal  
         path = [[py, px]] 
         pathFinished = False
 
         while pathFinished == False:
-            prev = expand[px][py]
-            if prev == 0:
+            count = expand[py][px]
+            if count == 0:
                 pathFinished = True
             else:
-                for i in range(len(delta)):
-                    dx = px + delta[i][0]
-                    dy = py + delta[i][1]
-                    if (dx >= 0 and dx < len(grid) and 
-                            dy >= 0 and dy < len(grid[0]) and 
-                            expand[dx][dy] >= 0 and expand[dx][dy] < prev):
+                for pos in self.delta:
+                    dx = px + pos[1]
+                    dy = py + pos[0]
+                    if (dx >= 0 and dx < gridX and 
+                            dy >= 0 and dy < gridY and 
+                            expand[dy][dx] >= 0 and expand[dy][dx] < count):
                         path.append([dy, dx])
                         px = dx
                         py = dy
                         break
-                count += 1
 
         return path
 
+    def noHeuristic(self, x, y, goalX, goalY):
+        return 0
+
 
 def euclideanDistance(x, y, goalX, goalY):
-    return 0 #(x - goalX)**2 + (y - goalY)**2
-
-
-def loadGridData(filename):
-    file = open(filename, 'r')
-    data = file.readlines()
-    return json.loads(data[0])
+    xDist = (x - goalX)
+    yDist = (y - goalY)
+    return xDist * xDist + yDist * yDist
 
 
 def main():
-    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGINT, signalHandler)
 
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
-    client = None
+    openByte = config.getint('map', 'open')
     grid = loadGridData(''.join([config.get('map', 'dir'), config.get('map-data', 'grid')]))
-    init = [0, 14]
-    goal = [15, 2]
+    
+    start = [int(num) for num in config.get('map', 'start').split(',')]
+    goal = [int(num) for num in config.get('map', 'goal').split(',')]
 
     # client = PubSubClient('', config.getint('server', 'port'))
-    pathfinder = PathFinder(client, grid, euclideanDistance)
-    path = pathfinder.search(init, goal)
+    pathfinder = PathFinder(grid, openByte, euclideanDistance)
+    path = pathfinder.search(start, goal)
     print path
     # IOLoop.instance().start()
 
