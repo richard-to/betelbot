@@ -8,12 +8,20 @@ import termios
 import time
 import tty
 
+import numpy as np
+
 from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 
 
 def signal_handler(signal, frame):
     sys.exit(0)
+
+
+def loadGridData(filename):
+    file = open(filename, 'r')
+    data = file.readlines()
+    return np.array(json.loads(data[0]))
 
 
 class PubSubClient:
