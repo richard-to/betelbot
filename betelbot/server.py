@@ -32,6 +32,8 @@ class BetelBotConnection(object):
     streamSet = set([])
     topics = msgs
     topicNames = dict((key,[]) for key in msgs.keys())
+    services = {}
+    pendingResponses = {}
 
     def __init__(self, stream, address, terminator='\0'):
         self.address = address
@@ -49,10 +51,19 @@ class BetelBotConnection(object):
         method = msg[JsonRpcProp.METHOD]
         params = msg[JsonRpcProp.PARAMS]
         numParams = len(params)
-        if numParams > 1 and method == BetelBotMethod.PUBLISH:
+        if method == BetelBotMethod.PUBLISH and numParams > 1:
             self.publish(params[0], *params[1:])
-        elif numParams == 1 and method == BetelBotMethod.SUBSCRIBE:
-            self.subscribe(params[0])      
+        elif method == BetelBotMethod.SUBSCRIBE and numParams == 1:
+            self.subscribe(params[0])
+        elif method == BetelBotMethod.SERVICE and numParams == 1:
+            self.service(params[0])
+        elif method == BetelBotMethod.REQUEST and numParams > 1:
+            id = msg[JsonRpcProp.ID]
+            self.request(id, params[0], *params[1:])
+        elif method == BetelBotMethod.RESPONSE and numParams == 2:
+            id = msg[JsonRpcProp.ID]
+            self.response(id, params[0], params[1]) 
+
         if not self.stream.reading():
             self.stream.read_until(self.terminator, self.onReadLine)
 
@@ -69,7 +80,25 @@ class BetelBotConnection(object):
         if topic in self.topicNames:
             self._logInfo('Subscribing to topic "{}"'.format(topic))
             self.topicNames[topic].append(self)
-    
+
+    def service(self, method):
+        if method not in self.services:
+            self._logInfo('Registering service "{}"'.format(method))
+            self.services[method] = self
+
+    def request(self, id, method, *params):
+        if method in self.services:
+            self.pendingResponses[id] = self
+            service = self.services[method]
+            msg = '{}{}'.format(self.rpc.request(id, method, *params), self.terminator)
+            service.stream.write(msg, service.onWriteComplete)
+
+    def response(self, id, result, error=None):
+        if id in self.pendingResponses:
+            client = self.pendingReponses.pop(id, None)
+            msg = '{}{}'.format(self.rpc.response(id, result, error), self.terminator)
+            service.stream.write(msg, service.onWriteComplete)
+
     def onWriteComplete(self):
         self._logInfo('Sending message')
         if not self.stream.reading():
@@ -81,6 +110,17 @@ class BetelBotConnection(object):
             if self in self.topicNames[topic]:
                 self._logInfo('Unsubscribing client from topic "{}"'.format(topic))        
                 self.topicNames[topic].remove(self)
+        
+        for method in self.services:
+            if self.services[method] == self:
+                self._logInfo('Deregistering service "{}"'.format(method))        
+                del self.services[method]
+
+        for id in self.pendingResponses:
+            if self.pendingResponses[id] == self:
+                self._logInfo("Removing client's pending responses")        
+                del self.pendingResponses[id] 
+
         self.streamSet.remove(self.stream)
 
     def _logInfo(self, msg):
