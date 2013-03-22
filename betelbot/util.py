@@ -64,6 +64,8 @@ class BetelBotClient:
         self.stream = IOStream(sock)
         self.stream.connect((host, port))
         self.subscriptionHandlers = {}
+        self.serviceHandlers = {}
+        self.pendingReponses = {}
         self.terminator = terminator
         self.rpc = JsonRpcEncoder()
 
@@ -78,25 +80,51 @@ class BetelBotClient:
         if not self.stream.reading():
             self.stream.read_until(self.terminator, self.onReadLine)
 
-    def service(self, topic, *args):
-        self.write(self.rpc.notification(BetelBotMethod.SERVICE, topic, *args))
+    def service(self, method, callback=None):
+        self.serviceHandlers[method] = callback      
+        self.write(self.rpc.notification(BetelBotMethod.SERVICE, method))
 
-    def request(self, topic, *args):
-        self.write(self.rpc.notification(BetelBotMethod.REQUEST, topic, *args))
+    def request(self, id, method, callback=None, *params):
+        self.pendingReponses[id] = callback
+        self.write(self.rpc.request(BetelBotMethod.REQUEST, id, method, *params))
 
-    def response(self, topic, *args):
-        self.write(self.rpc.notification(BetelBotMethod.RESPONSE, topic, *args))
+    def response(self, id, result, error=None):
+        self.write(self.rpc.response(BetelBotMethod.RESPONSE, id, result, error))
 
     def write(self, msg):
         self.stream.write("{}{}".format(msg, self.terminator))
 
     def onReadLine(self, data):
         msg = json.loads(data.strip(self.terminator))
+        id = msg[JsonRpcProp.ID]
+
+        if id is None:
+            self.onNotification(msg)
+        elif JsonRpcProp.METHOD in msg:
+            self.onRequest(msg)
+        elif id in self.pendingRequests:
+            self.onResponseon(msg)
+            
+        if not self.stream.reading():
+            self.stream.read_until(self.terminator, self.onReadLine)
+
+    def onNotification(self, msg):
+        id = msg[JsonRpcProp.ID]        
         topic = msg[JsonRpcProp.METHOD]
         for subscriber in self.subscriptionHandlers[topic]:
             subscriber(topic, msg[JsonRpcProp.PARAMS])
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)
+
+    def onRequest(self, msg):
+        id = msg[JsonRpcProp.ID]        
+        method = msg[JsonRpcProp.METHOD]
+        if method in self.serviceHandlers:
+            self.serviceHandlers[method](id, method, msg[JsonRpcProp.params])
+
+    def onResponse(self, msg):
+        result = msg[JsonRpcProp.RESULT]
+        error = msg[JsonRpcProp.ERROR]
+        callback = self.pendingReponses.pop(id, None)
+        callback(id, result, error)
 
     def close():
         self.stream.close()
