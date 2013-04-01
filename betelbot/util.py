@@ -25,37 +25,6 @@ class BetelBotMethod:
     REQUEST = 'request'
     RESPONSE = 'response'
 
-class JsonRpcProp:
-    ID = 'id'
-    METHOD = 'method'
-    PARAMS = 'params'
-    RESULT = 'result'
-    ERROR = 'error'
-
-
-class JsonRpcEncoder:
-
-    def request(self, id, method, *params):
-        return self.encode({
-            JsonRpcProp.ID: id, 
-            JsonRpcProp.METHOD: method, 
-            JsonRpcProp.PARAMS: params})
-
-    def response(self, id, result, error=None):
-        return self.encode({
-            JsonRpcProp.ID:id, 
-            JsonRpcProp.RESULT: result, 
-            JsonRpcProp.ERROR: error})
-
-    def notification(self, method, *params):
-        return self.encode({
-            JsonRpcProp.ID: None, 
-            JsonRpcProp.METHOD: method, 
-            JsonRpcProp.PARAMS: params})
-
-    def encode(self, msg):
-        return json.dumps(msg)
-
 
 class BetelBotClient:
 
