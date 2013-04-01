@@ -1,3 +1,5 @@
+from topic import ValueTopic
+
 class CmdTopic(ValueTopic):
     # Command msgs contain directions for Betelbot to move. These messages
     # are usually published by a controller interface.
