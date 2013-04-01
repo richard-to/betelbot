@@ -1,17 +1,11 @@
 import fcntl
-import json
 import os
 import select
 import signal
-import socket
 import sys 
 import termios
 import time
 import tty
-
-
-from tornado.ioloop import IOLoop
-from tornado.iostream import IOStream
 
 
 def signalHandler(signal, frame):
@@ -23,95 +17,6 @@ def signalHandler(signal, frame):
     # Callback is used as a param for this function
     # signal.signal(signal.SIGINT, signalHandler).
     sys.exit(0)
-
-
-class BetelbotMethod:
-    # Valid JSON-RPC 2.0 method names for Betelbot server.
-
-    PUBLISH = 'publish'
-    SUBSCRIBE = 'subscribe'
-    SERVICE = 'service'
-    REQUEST = 'request'
-    RESPONSE = 'response'
-
-
-class BetelbotClient:
-
-    def __init__(self, host='', port=8888, terminator='\0'):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        self.stream = IOStream(sock)
-        self.stream.connect((host, port))
-        self.subscriptionHandlers = {}
-        self.serviceHandlers = {}
-        self.pendingReponses = {}
-        self.terminator = terminator
-        self.rpc = JsonRpcEncoder()
-
-    def publish(self, topic, *args):
-        self.write(self.rpc.notification(BetelbotMethod.PUBLISH, topic, *args))
-
-    def subscribe(self, topic, callback=None):
-        if topic not in self.subscriptionHandlers:
-            self.subscriptionHandlers[topic] = []
-        self.subscriptionHandlers[topic].append(callback)
-        self.write(self.rpc.notification(BetelbotMethod.SUBSCRIBE, topic))
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)
-
-    def service(self, method, callback=None):
-        self.serviceHandlers[method] = callback      
-        self.write(self.rpc.notification(BetelbotMethod.SERVICE, method))
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)        
-
-    def request(self, id, method, callback=None, *params):
-        self.pendingReponses[id] = callback
-        self.write(self.rpc.request(id, BetelbotMethod.REQUEST, method, *params))
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)        
-
-    def response(self, id, result, error=None):
-        self.write(self.rpc.response(id, result, error))
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)        
-
-    def write(self, msg):
-        self.stream.write("{}{}".format(msg, self.terminator))
-
-    def onReadLine(self, data):
-        msg = json.loads(data.strip(self.terminator))
-        id = msg[JsonRpcProp.ID]
-
-        if id is None:
-            self.onNotification(msg)
-        elif JsonRpcProp.METHOD in msg:
-            self.onRequest(msg)
-        elif id in self.pendingRequests:
-            self.onResponseon(msg)
-            
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)
-
-    def onNotification(self, msg):
-        id = msg[JsonRpcProp.ID]        
-        topic = msg[JsonRpcProp.METHOD]
-        for subscriber in self.subscriptionHandlers[topic]:
-            subscriber(topic, msg[JsonRpcProp.PARAMS])
-
-    def onRequest(self, msg):
-        id = msg[JsonRpcProp.ID]        
-        method = msg[JsonRpcProp.METHOD]
-        if method in self.serviceHandlers:
-            self.serviceHandlers[method](id, method, msg[JsonRpcProp.PARAMS])
-
-    def onResponse(self, msg):
-        result = msg[JsonRpcProp.RESULT]
-        error = msg[JsonRpcProp.ERROR]
-        callback = self.pendingReponses.pop(id, None)
-        callback(id, result, error)
-
-    def close():
-        self.stream.close()
 
 
 class NonBlockingTerm:
