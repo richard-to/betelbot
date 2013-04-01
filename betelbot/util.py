@@ -26,11 +26,11 @@ def loadMsgDictFromPkg(pkgFile):
     msgs = {}    
     modules = loadPkgModules(pkgFile)
     for module in modules:
-        msgs.update(loadMsgDict(MloadModuleClasses(module)))
+        msgs.update(loadMsgDict(loadModuleClasses(module)))
     return msgs
 
 
-def loadMsgDict(msgClasses):
+def loadMsgDict(msgObj):
     # Dynamically load topic/service classes into a
     # dictionary.
     #
@@ -40,8 +40,8 @@ def loadMsgDict(msgClasses):
     # The key will be the id value of the topic or service class.
 
     msgDict = {}
-    for msgCls in msgClasses:
-        msg = msgCls()
+    for name, obj in msgObj:
+        msg = obj()
         msgDict[msg.id] = msg
     return msgDict
 
@@ -68,8 +68,8 @@ def loadModuleClasses(module):
     # This function will only get classes defined a the specified module. 
     # Classes that imported from within the module are ignored since that 
     # would be the common use case.
-
-    return inspect.getmembers(module, lambda o: inspect.isclass(o) and o.__module__ == module.__name__):
+    # This returns a list of tuples with the format of (className, class)
+    return inspect.getmembers(module, lambda o: inspect.isclass(o) and o.__module__ == module.__name__)
 
 
 def signalHandler(signal, frame):
