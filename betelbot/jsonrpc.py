@@ -7,6 +7,9 @@ import json
 # Compatibility with web interfaces was another benefit of using this protocol.
 #
 # The JSON-RPC 2.0 spec can be found here: http://www.jsonrpc.org/specification.
+#
+# Currently only a JSON-RPC encoder class is implemented. For now, messages can be
+# decoding using json.loads to turn json into python data types.
 
 
 class JsonRpcProp:
@@ -53,6 +56,7 @@ class JsonRpcEncoder:
 
     def __init__(self, jsonEncoder=json.JSONEncoder):
         # Pass in a custom JSONEncoder if complex objects need to be encoded.
+        
         self.jsonEncoder = jsonEncoder
 
     def request(self, id, method, *params):
@@ -106,8 +110,11 @@ class JsonRpcEncoder:
     def encode(self, msg):
         # Helper that encodes dict into json and adds jsonrpc version param, 
         # which is required by JSON-RPC 2.0.
+        #
+        # This method should only be used privately since it does not check
+        # that a valid message is provided.
         
-        msg[JSONRPC] = self.VERSION
+        msg[JsonRpcProp.JSONRPC] = self.VERSION
         return json.dumps(msg, cls=self.jsonEncoder)
 
 
