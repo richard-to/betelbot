@@ -100,9 +100,6 @@ class PathFinder:
         return 0
 
 
-def PathFinderService:
-
-    def 
 def main():
     signal.signal(signal.SIGINT, signalHandler)
 
@@ -113,11 +110,16 @@ def main():
     start = [int(num) for num in config.get('map', 'start').split(',')]
     goal = [int(num) for num in config.get('map', 'goal').split(',')]
 
-    # client = BetelBotClient('', config.getint('server', 'port'))
-    pathfinder = PathFinder(grid, openByte, euclideanDistance)
-    path = pathfinder.search(start, goal)
-    print path
-    # IOLoop.instance().start()
+    # pathfinder = PathFinder(grid, openByte, euclideanDistance)
+    # path = pathfinder.search(start, goal)
+    # print path
+
+    client = BetelBotClient('', config.getint('server', 'port'))    
+    def onServiceRequested(id, method, *params):
+        print "HANDLING REQUEST"
+        client.response(id, "SUCCESS")    
+    client.service('pathfinder', onServiceRequested)
+    IOLoop.instance().start()
 
 
 if __name__ == '__main__':
