@@ -6,7 +6,7 @@ import threading
 
 from tornado.ioloop import IOLoop
 
-from topic import cmdTopic
+from topic.default import CmdTopic
 from util import NonBlockingTerm, Client
 from client import BetelbotConnection
 
@@ -26,13 +26,13 @@ def onCmdPublished(topic, data=None):
         print '[{}]{}'.format(topic, ' '.join(data))
 
 
-def onInput(client):
+def onInput(conn, cmdTopic):
     # When terminal receives key input, this input is published 
     # if it matches the accepted values of the command topic.
 
     c = sys.stdin.read(1)
-    if c in cmdTopic.dataType:
-        client.publish(cmdTopic.id, c)
+    if cmdTopic.isValid(c):
+        conn.publish(cmdTopic.id, c)
 
 
 def main():
@@ -43,6 +43,9 @@ def main():
 
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
+    
+    cmdTopic = CmdTopic()
+
     client = Client('', config.getint('server', 'port'), BetelbotConnection)
     conn = client.connect()
     conn.subscribe(cmdTopic.id, onCmdPublished)
@@ -56,7 +59,7 @@ def main():
     print "Use [h,j,k,l] to move and [s] to stop."
 
     term = NonBlockingTerm()
-    term.run(lambda: onInput(conn))
+    term.run(lambda: onInput(conn, cmdTopic))
 
 
 if __name__ == "__main__":
