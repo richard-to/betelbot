@@ -1,6 +1,9 @@
 import abc
 import fcntl
+import inspect
 import os
+import os.path
+import pkgutil
 import select
 import signal
 import socket
@@ -10,6 +13,64 @@ import time
 import tty
 
 from tornado.iostream import IOStream
+
+
+def loadMsgDictFromPkg(pkgFile):
+    # Dynamically loads all classes in specified package and 
+    # returns a dictionary with the key as the id value of the topic
+    # or service class.
+    #
+    # This method should only be used in packages that contain only
+    # topic and service typc classes.
+
+    msgs = {}    
+    modules = loadPkgModules(pkgFile)
+    for module in modules:
+        msgs.update(loadMsgDict(MloadModuleClasses(module)))
+    return msgs
+
+
+def loadMsgDict(msgClasses):
+    # Dynamically load topic/service classes into a
+    # dictionary.
+    #
+    # Betelbot servers and clients use this dictionary to validate 
+    # topics and services.
+    #
+    # The key will be the id value of the topic or service class.
+
+    msgDict = {}
+    for msgCls in msgClasses:
+        msg = msgCls()
+        msgDict[msg.id] = msg
+    return msgDict
+
+
+def loadPkgModules(pkgFile):
+    # Dynamically loads all modules from a specified package.
+    #
+    # This function requires the directory path of the package.
+    #
+    # The main use case for this function is to load Topic and Service 
+    # definitions. This means that the modules will be loaded from the Package 
+    # __init__.py file and will make it so the directory path can be retrieved 
+    # using the __file__ variable.
+
+    pkgpath = os.path.dirname(pkgFile)
+    modules = [loader.find_module(name).load_module(name) 
+        for loader, name, _ in pkgutil.iter_modules([pkgpath])]
+    return modules
+
+
+def loadModuleClasses(module):
+    # Dynamically get all classes in a module.
+    #
+    # This function will only get classes defined a the specified module. 
+    # Classes that imported from within the module are ignored since that 
+    # would be the common use case.
+
+    return inspect.getmembers(module, lambda o: inspect.isclass(o) and o.__module__ == module.__name__):
+
 
 def signalHandler(signal, frame):
     # Callback to make sure scripts exit cleanly.
@@ -34,7 +95,7 @@ class Client(object):
         self.terminator = terminator
         self.kwargs = kwargs
 
-    def create(self):
+    def connect(self):
         # Creates and returns a connection object for use.
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
