@@ -21,7 +21,6 @@ class BetelBotDriver(TCPServer):
     def __init__(self, client, io_loop=None, ssl_options=None, **kwargs):
         logging.info('BetelBot Driver is running')        
         TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options, **kwargs)
-        self.subscribers = []
         self.client = client
 
     def handle_stream(self, stream, address):
