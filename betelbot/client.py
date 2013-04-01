@@ -7,40 +7,39 @@ from tornado.iostream import IOStream
 import jsonrpc
 
 from master import BetelbotMethod
+from util import Client, Connection
 
 
-class BetelbotClient:
-    # Betelbot clients interact with Betelbot server using JSON-RPC 2.0.
+class BetelbotClientConnection(Connection):
+    # Betelbot client connections are persistent tcp connections
+    # that send/receive messages from Betelbot server using JSON-RPC 2.0.
     #
-    # Features:
-    # - Publish data on topics
+    # In other words is a peer-to-peer connection, which may not be part of 
+    # the JSON-RPC 2.0 protocol.
+    #
+    # Supported operations:
+    # - Publish info to topics
     # - Subscribe to topics
     # - Register a service on server
     # - Locate a service
-    # - Send requests to service
-    # - Receive responses from a service
+    #
+    # If service requests/notifications are required, use the connection class
+    # in jsonrpc module.
 
-    def __init__(self, host='', port=8888, terminator='\0'):
-        # Initializes socket to connect with server.
-        # 
-        # The nullbyte is the default line terminator. Chosen because 
-        # it will be least likely to interfere with JSON-RPC.
-
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
-        self.stream = IOStream(sock)
-        self.stream.connect((host, port))
+    def __init__(self, stream, terminator, address, encoder=Encoder()):
+        super(BetelbotClientConnection, self).__init__(stream, address, terminator)        
+        self.encoder = encoder
         self.subscriptionHandlers = {}
-        self.serviceHandlers = {}
-        self.pendingReponses = {}
-        self.terminator = terminator
-        self.rpc = jsonrpc.Encoder()
+        self.msgHandlers = {
+            BetelbotMethod.ONSUBSCRIBE: self.onSubscribe
+        }
 
     def publish(self, topic, *params):
         # Sends a "publish" notification to the server.
         #
         # Params are the data to be published to subscribers of topic.
 
-        self.write(self.rpc.notification(BetelbotMethod.PUBLISH, topic, *params))
+        self.write(self.encoder.notification(BetelbotMethod.PUBLISH, topic, *params))
 
     def subscribe(self, topic, callback=None):
         # Sends a "subscribe" notification to the server.
@@ -52,79 +51,54 @@ class BetelbotClient:
             self.subscriptionHandlers[topic] = []
         
         self.subscriptionHandlers[topic].append(callback)
-        self.write(self.rpc.notification(BetelbotMethod.SUBSCRIBE, topic))
+        self.write(self.encoder.notification(BetelbotMethod.SUBSCRIBE, topic))
 
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)
-
-    def register(self, method, callback=None):
-        # Registers a service with the server. Currently services 
-        # are just methods rather than a set of methods.
+    def register(self, method, host, port):
+        # Registers a service with the server. Information needed is method name,
+        # host and port for the servicee.
+        #
+        # Currently services are just methods rather than a set of methods.
         #
         # Multiple services can be registered by the server by registering
         # a method at a time.
+     
+        self.write(self.encoder.notification(BetelbotMethod.REGISTER, method, host, port))
+
+    def onRead(self, data):
+        # When data is received parse json message and call 
+        # corresponding method handler.
         #
-        # The callback invoked should be capable of handling requests
-        # and sending back a response.
-
-        self.serviceHandlers[method] = callback      
-        self.write(self.rpc.notification(BetelbotMethod.REGISTER, method))
-
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)        
-    
-    """
-    def request(self, id, method, callback=None, *params):
-        # Sends a request to a service and 
-        self.pendingReponses[id] = callback
-        self.write(self.rpc.request(id, BetelbotMethod.REQUEST, method, *params))
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)        
-
-    def response(self, id, result, error=None):
-        self.write(self.rpc.response(id, result, error))
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)        
-    """
-
-    def write(self, msg):
-        # Lower-level method to sends msg to the server.
-        #
-        # Should not be called directly since this method expects 
-        # message to follow JSON-RPC format.
-
-        self.stream.write("{}{}".format(msg, self.terminator))
-
-    def onReadLine(self, data):
+        # Currently only subscription notifications are handled.
+        
         msg = json.loads(data.strip(self.terminator))
-        id = msg.get(jsonrpc.Key.ID, None)
+        method = msg.get(jsonrpc.Key.METHOD, None)
 
-        if id is None:
-            self.onNotification(msg)
-        elif jsonrpc.Key.METHOD in msg:
-            self.onRequest(msg)
-        elif id in self.pendingRequests:
-            self.onResponseon(msg)
+        if method in self.msgHandlers:
+            self.msgHandlers[method](msg)
             
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)
+        self.read()
 
-    def onNotification(self, msg):  
-        topic = msg[jsonrpc.Key.METHOD]
-        for subscriber in self.subscriptionHandlers[topic]:
-            subscriber(topic, msg[jsonrpc.Key.PARAMS])
+    def onSubscribe(self, msg):  
+        # A subscription notification consists of at least 2 parameters.
+        # The first parameter is the name of the topic, and the other 
+        # parameters are data.
+        #
+        # The subscription handler will send this data along to local
+        # subscribers.
+        #
+        # The reason that there can be multiple subscribers to the same 
+        # message is in the case of a web server that has multiple websocket
+        # connections.
+        
+        params = msg.get(jsonrpc.Key.PARAMS, None)
 
-    def onRequest(self, msg):
-        id = msg[jsonrpc.Key.ID]        
-        method = msg[jsonrpc.Key.METHOD]
-        if method in self.serviceHandlers:
-            self.serviceHandlers[method](id, method, msg[jsonrpc.Key.PARAMS])
+        if len(params > 2):
+            topic = params[0]
+            data = params[1:]
+            if topic in self.subscriptionHandlers:
+                for subscriber in self.subscriptionHandlers[topic]:
+                    subscriber(topic, data)
 
-    def onResponse(self, msg):
-        result = msg[jsonrpc.Key.RESULT]
-        error = msg[jsonrpc.Key.ERROR]
-        callback = self.pendingReponses.pop(id, None)
-        callback(id, result, error)
 
     def close():
         # Disconnects client from server.
