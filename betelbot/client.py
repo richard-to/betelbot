@@ -26,7 +26,7 @@ class BetelbotClientConnection(Connection):
     # If service requests/notifications are required, use the connection class
     # in jsonrpc module.
 
-    def __init__(self, stream, terminator, address, encoder=Encoder()):
+    def __init__(self, stream, address, terminator, encoder=jsonrpc.Encoder()):
         super(BetelbotClientConnection, self).__init__(stream, address, terminator)        
         self.encoder = encoder
         self.subscriptionHandlers = {}
@@ -72,10 +72,8 @@ class BetelbotClientConnection(Connection):
         
         msg = json.loads(data.strip(self.terminator))
         method = msg.get(jsonrpc.Key.METHOD, None)
-
         if method in self.msgHandlers:
-            self.msgHandlers[method](msg)
-            
+            self.msgHandlers[method](msg)          
         self.read()
 
     def onSubscribe(self, msg):  
@@ -89,10 +87,9 @@ class BetelbotClientConnection(Connection):
         # The reason that there can be multiple subscribers to the same 
         # message is in the case of a web server that has multiple websocket
         # connections.
-        
-        params = msg.get(jsonrpc.Key.PARAMS, None)
 
-        if len(params > 2):
+        params = msg.get(jsonrpc.Key.PARAMS, None)
+        if len(params) > 1:
             topic = params[0]
             data = params[1:]
             if topic in self.subscriptionHandlers:
