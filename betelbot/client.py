@@ -10,7 +10,7 @@ from master import BetelbotMethod
 from util import Client, Connection
 
 
-class BetelbotClientConnection(Connection):
+class BetelbotConnection(Connection):
     # Betelbot client connections are persistent tcp connections
     # that send/receive messages from Betelbot server using JSON-RPC 2.0.
     #
@@ -27,7 +27,7 @@ class BetelbotClientConnection(Connection):
     # in jsonrpc module.
 
     def __init__(self, stream, address, terminator, encoder=jsonrpc.Encoder()):
-        super(BetelbotClientConnection, self).__init__(stream, address, terminator)        
+        super(BetelbotConnection, self).__init__(stream, address, terminator)        
         self.encoder = encoder
         self.subscriptionHandlers = {}
         self.msgHandlers = {

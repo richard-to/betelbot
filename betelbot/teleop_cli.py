@@ -8,7 +8,7 @@ from tornado.ioloop import IOLoop
 
 from topic import cmdTopic
 from util import NonBlockingTerm, Client
-from client import BetelbotClientConnection
+from client import BetelbotConnection
 
 
 def threadedLoop():
@@ -43,8 +43,8 @@ def main():
 
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
-    client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
-    conn = client.create()
+    client = Client('', config.getint('server', 'port'), BetelbotConnection)
+    conn = client.connect()
     conn.subscribe(cmdTopic.id, onCmdPublished)
 
     thread = threading.Thread(target=threadedLoop)

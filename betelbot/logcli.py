@@ -6,8 +6,9 @@ import signal
 
 from tornado.ioloop import IOLoop
 
-from util import BetelBotClient, signalHandler
+from client import BetelbotConnection
 from topic import msgs
+from util import Client, signalHandler
 
 
 def onTopicPublished(topic, data=None):
@@ -31,9 +32,10 @@ def main():
 
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
-    client = BetelBotClient('', config.getint('server', 'port'))
+    client = Client('', config.getint('server', 'port'), BetelbotConnection)
+    conn = client.connect()
     for msg in msgs:
-        client.subscribe(msg, onTopicPublished)
+        conn.subscribe(msg, onTopicPublished)
     IOLoop.instance().start()
 
 
