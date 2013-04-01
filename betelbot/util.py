@@ -152,3 +152,12 @@ class NonBlockingTerm:
 
     def hasData(self):
         return select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], [])
+
+
+def main():
+    pass
+
+
+if __name__ == '__main__':
+    main()
+    
