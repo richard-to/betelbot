@@ -25,7 +25,9 @@ def signalHandler(signal, frame):
     sys.exit(0)
 
 
-class BetelBotMethod:
+class BetelbotMethod:
+    # Valid JSON-RPC 2.0 method names for Betelbot server.
+
     PUBLISH = 'publish'
     SUBSCRIBE = 'subscribe'
     SERVICE = 'service'
@@ -33,7 +35,7 @@ class BetelBotMethod:
     RESPONSE = 'response'
 
 
-class BetelBotClient:
+class BetelbotClient:
 
     def __init__(self, host='', port=8888, terminator='\0'):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
@@ -46,26 +48,32 @@ class BetelBotClient:
         self.rpc = JsonRpcEncoder()
 
     def publish(self, topic, *args):
-        self.write(self.rpc.notification(BetelBotMethod.PUBLISH, topic, *args))
+        self.write(self.rpc.notification(BetelbotMethod.PUBLISH, topic, *args))
 
     def subscribe(self, topic, callback=None):
         if topic not in self.subscriptionHandlers:
             self.subscriptionHandlers[topic] = []
         self.subscriptionHandlers[topic].append(callback)
-        self.write(self.rpc.notification(BetelBotMethod.SUBSCRIBE, topic))
+        self.write(self.rpc.notification(BetelbotMethod.SUBSCRIBE, topic))
         if not self.stream.reading():
             self.stream.read_until(self.terminator, self.onReadLine)
 
     def service(self, method, callback=None):
         self.serviceHandlers[method] = callback      
-        self.write(self.rpc.notification(BetelBotMethod.SERVICE, method))
+        self.write(self.rpc.notification(BetelbotMethod.SERVICE, method))
+        if not self.stream.reading():
+            self.stream.read_until(self.terminator, self.onReadLine)        
 
     def request(self, id, method, callback=None, *params):
         self.pendingReponses[id] = callback
-        self.write(self.rpc.request(BetelBotMethod.REQUEST, id, method, *params))
+        self.write(self.rpc.request(id, BetelbotMethod.REQUEST, method, *params))
+        if not self.stream.reading():
+            self.stream.read_until(self.terminator, self.onReadLine)        
 
     def response(self, id, result, error=None):
-        self.write(self.rpc.response(BetelBotMethod.RESPONSE, id, result, error))
+        self.write(self.rpc.response(id, result, error))
+        if not self.stream.reading():
+            self.stream.read_until(self.terminator, self.onReadLine)        
 
     def write(self, msg):
         self.stream.write("{}{}".format(msg, self.terminator))
@@ -94,7 +102,7 @@ class BetelBotClient:
         id = msg[JsonRpcProp.ID]        
         method = msg[JsonRpcProp.METHOD]
         if method in self.serviceHandlers:
-            self.serviceHandlers[method](id, method, msg[JsonRpcProp.params])
+            self.serviceHandlers[method](id, method, msg[JsonRpcProp.PARAMS])
 
     def onResponse(self, msg):
         result = msg[JsonRpcProp.RESULT]
@@ -136,4 +144,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    
