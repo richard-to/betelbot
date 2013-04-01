@@ -15,6 +15,13 @@ from tornado.iostream import IOStream
 
 
 def signalHandler(signal, frame):
+    # Callback to make sure scripts exit cleanly.
+    #
+    # Tornado servers don't stop cleanly when using Ctrl+C. I can't remember
+    # why this behavior occurs.
+    #
+    # Callback is used as a param for this function
+    # signal.signal(signal.SIGINT, signalHandler).
     sys.exit(0)
 
 
