@@ -1,5 +1,8 @@
+import abc
 import json
+import socket
 
+from util import Connection
 
 # Betelbot servers and clients communicate using JSON-RPC 2.0.
 # 
@@ -12,7 +15,7 @@ import json
 # decoding using json.loads to turn json into python data types.
 
 
-class Key:
+class Key(object):
     # JSON-RPC 2.0 message Keys/params.
 
     JSONRPC = 'jsonrpc'
@@ -25,7 +28,7 @@ class Key:
     MESSAGE = 'message'
 
 
-class Error:
+class Error(object):
     # JSON-RPC 2.0 error codes and messages.
     #
     # Use codes -32000 to -32099 are for custom server errors.
@@ -37,7 +40,7 @@ class Error:
     INTERNAL_ERROR = {Key.CODE: -326003, Key.MESSAGE: 'Internal error'}
 
 
-class Encoder:
+class Encoder(object):
     # Implements a barebones JSON-RPC 2.0 interface for sending messages.
     #
     # The encoder does not check the validity of params received. The params 
@@ -118,7 +121,7 @@ class Encoder:
         return json.dumps(msg, cls=self.jsonEncoder)
 
 
-class IdIncrement:
+class IdIncrement(object):
     # Generate auto incrementing ids. Not the best option, 
     # but this will do for now.
     #
@@ -147,6 +150,43 @@ class IdIncrement:
         newId = ''.join([self.prefix, str(self.start)])
         self.start = self.start + self.increment
         return newId
+
+
+class ClientConnection(Connection):
+    # Extends Connection class to handle a JSON-RPC notification or request.
+    # 
+    # Connections are best created from the Client class in the util module.
+    #
+    # - If a notification is sent, then the connection closes immediately.
+    # - If a request is sent, connection closes when a response is received.
+    # - A timeout parameter could be useful.
+
+    def __init__(self, stream, address, terminator, encoder=Encoder()):
+        super(ClientConnection, self).__init__(stream, address, terminator)
+        self.encoder = encoder
+
+    def notification(self, method, *params):
+        # Sends a notification to server and closes connection.
+
+        self.write(self.encoder.notification(method, *params))
+        self.close() 
+
+    def request(self, callback, id, method, *params):
+        # Sends a request. This method is nonblocking, so a callback 
+        # is necessary to handle the eventual response.
+
+        self.callback = callback
+        self.write(self.encoder.request(id, method, *params))
+
+    def onRead(self, data):
+        # Handles response from server by calling specified 
+        # callback and closing connection.
+
+        if self.callback:
+            msg = json.loads(data.strip(self.terminator))
+            self.callback(msg)
+            self.callback = None
+        self.close()
 
 
 def main():
