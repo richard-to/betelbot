@@ -12,24 +12,38 @@ from client import BetelbotClientConnection
 
 
 def threadedLoop():
+    # Need to run the Tornado IO loop in its own thread,
+    # otherwise it will block terminal input.
+
     IOLoop.instance().start()
  
 
 def onCmdPublished(topic, data=None):
+    # Debugging callback to make test if commands are 
+    # being received and published.
+
     if data:
         print '[{}]{}'.format(topic, ' '.join(data))
 
 
 def onInput(client):
+    # When terminal receives key input, this input is published 
+    # if it matches the accepted values of the command topic.
+
     c = sys.stdin.read(1)
     if c in cmdTopic.dataType:
         client.publish(cmdTopic.id, c)
 
 
 def main():
+    # Starts up a client connection to publish commands to Betelbot server.
+    #
+    # - Use h, j, k, and l to move left, down, up, and right respectively.
+    # - Use s to stop.
+
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
-    client =Client('', config.getint('server', 'port'), BetelbotClientConnection)
+    client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
     conn = client.create()
     conn.subscribe(cmdTopic.id, onCmdPublished)
 
