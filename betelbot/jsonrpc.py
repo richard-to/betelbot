@@ -12,8 +12,8 @@ import json
 # decoding using json.loads to turn json into python data types.
 
 
-class JsonRpcProp:
-    # JSON-RPC 2.0 message keywords/params.
+class Key:
+    # JSON-RPC 2.0 message Keys/params.
 
     JSONRPC = 'jsonrpc'
     ID = 'id'
@@ -25,19 +25,19 @@ class JsonRpcProp:
     MESSAGE = 'message'
 
 
-class JsonRpcError:
+class Error:
     # JSON-RPC 2.0 error codes and messages.
     #
     # Use codes -32000 to -32099 are for custom server errors.
 
-    PARSE_ERROR = {JsonRpcProp.CODE: -32700, JsonRpcProp.MESSAGE: 'Parse error'}
-    INVALID_REQUEST = {JsonRpcProp.CODE: -32600, JsonRpcProp.MESSAGE: 'Invalid Request'}
-    METHOD_NOT_FOUND = {JsonRpcProp.CODE: -32601, JsonRpcProp.MESSAGE: 'Method not found'}
-    INVALID_PARAMS = {JsonRpcProp.CODE: -326002, JsonRpcProp.MESSAGE: 'Invalid params'}
-    INTERNAL_ERROR = {JsonRpcProp.CODE: -326003, JsonRpcProp.MESSAGE: 'Internal error'}
+    PARSE_ERROR = {Key.CODE: -32700, Key.MESSAGE: 'Parse error'}
+    INVALID_REQUEST = {Key.CODE: -32600, Key.MESSAGE: 'Invalid Request'}
+    METHOD_NOT_FOUND = {Key.CODE: -32601, Key.MESSAGE: 'Method not found'}
+    INVALID_PARAMS = {Key.CODE: -326002, Key.MESSAGE: 'Invalid params'}
+    INTERNAL_ERROR = {Key.CODE: -326003, Key.MESSAGE: 'Internal error'}
 
 
-class JsonRpcEncoder:
+class Encoder:
     # Implements a barebones JSON-RPC 2.0 interface for sending messages.
     #
     # The encoder does not check the validity of params received. The params 
@@ -67,10 +67,10 @@ class JsonRpcEncoder:
         # - Method params can be in positional or named, ie. list or dict format.
 
         msg = {
-            JsonRpcProp.ID: id,        
-            JsonRpcProp.METHOD : method}
+            Key.ID: id,        
+            Key.METHOD : method}
         if params:
-            msg[JsonRpcProp.PARAMS] = params
+            msg[Key.PARAMS] = params
         return self.encode(msg)
 
     def response(self, id, result):
@@ -79,19 +79,19 @@ class JsonRpcEncoder:
         # - An id and result are required.
 
         return self.encode({
-            JsonRpcProp.ID: id, 
-            JsonRpcProp.RESULT: result})
+            Key.ID: id, 
+            Key.RESULT: result})
 
     def error(self, id, error):
         # Encodes a JSON object to be sent as an error response to a request.
         #
         # - An id and error are required
         # - An error is an object with code and message params. 
-        # - See JsonRpcError for default error codes.
+        # - See Error for default error codes.
 
         return self.encode({
-            JsonRpcProp.ID: id,
-            JsonRpcProp.ERROR: error})
+            Key.ID: id,
+            Key.ERROR: error})
 
     def notification(self, method, *params):
         # Encodes a JSON object to be sent as a notification.
@@ -102,9 +102,9 @@ class JsonRpcEncoder:
         # - Method name is required.
         # - Params are optional and can be positional or named.
 
-        msg = {JsonRpcProp.METHOD : method}
+        msg = {Key.METHOD : method}
         if params:
-            msg[JsonRpcProp.PARAMS] = params
+            msg[Key.PARAMS] = params
         return self.encode(msg)
 
     def encode(self, msg):
@@ -114,11 +114,11 @@ class JsonRpcEncoder:
         # This method should only be used privately since it does not check
         # that a valid message is provided.
         
-        msg[JsonRpcProp.JSONRPC] = self.VERSION
+        msg[Key.JSONRPC] = self.VERSION
         return json.dumps(msg, cls=self.jsonEncoder)
 
 
-class JsonRpcIdIncrement:
+class IdIncrement:
     # Generate auto incrementing ids. Not the best option, 
     # but this will do for now.
     #
@@ -143,7 +143,7 @@ class JsonRpcIdIncrement:
 
     def id(self):
         # Generates an id and then increments id.
-        
+
         newId = ''.join([self.prefix, str(self.start)])
         self.start = self.start + self.increment
         return newId
