@@ -27,6 +27,7 @@ class BetelbotMethod:
     SUBSCRIBE = 'subscribe'
     REGISTER = 'register'
     LOCATE = 'locate'
+    ONSUBSCRIBE = 'onsubscribe'
 
 
 class BetelbotServer(TCPServer):
