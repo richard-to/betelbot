@@ -3,11 +3,13 @@ import fcntl
 import os
 import select
 import signal
+import socket
 import sys 
 import termios
 import time
 import tty
 
+from tornado.iostream import IOStream
 
 def signalHandler(signal, frame):
     # Callback to make sure scripts exit cleanly.
@@ -29,7 +31,7 @@ class Client(object):
         self.host = host
         self.port = port
         self.connection = connection
-        self.terminator
+        self.terminator = terminator
         self.kwargs = kwargs
 
     def create(self):
@@ -38,7 +40,7 @@ class Client(object):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         stream = IOStream(sock)
         stream.connect((self.host, self.port))
-        return self.connection(stream, self.terminator, **self.kwargs)
+        return self.connection(stream, sock.getsockname(), self.terminator, **self.kwargs)
 
 
 class Connection(object):
@@ -46,7 +48,7 @@ class Connection(object):
     # on a connected socket. The onRead method needs to be implemented.
     #
     # Connection objects can be use for both server and client connections.
-    
+
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, stream, address, terminator):
