@@ -4,11 +4,13 @@ import socket
 from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 
-from jsonrpc import JsonRpcProp, JsonRpcEncoder
-from server import BetelbotMethod
+import jsonrpc
+
+from master import BetelbotMethod
+
 
 class BetelbotClient:
-    # Betelbot clients interact with Betelbot servers using JSON-RPC 2.0.
+    # Betelbot clients interact with Betelbot server using JSON-RPC 2.0.
     #
     # Features:
     # - Publish data on topics
@@ -31,7 +33,7 @@ class BetelbotClient:
         self.serviceHandlers = {}
         self.pendingReponses = {}
         self.terminator = terminator
-        self.rpc = JsonRpcEncoder()
+        self.rpc = jsonrpc.Encoder()
 
     def publish(self, topic, *params):
         # Sends a "publish" notification to the server.
@@ -67,7 +69,7 @@ class BetelbotClient:
 
         self.serviceHandlers[method] = callback      
         self.write(self.rpc.notification(BetelbotMethod.REGISTER, method))
-        
+
         if not self.stream.reading():
             self.stream.read_until(self.terminator, self.onReadLine)        
     
@@ -95,11 +97,11 @@ class BetelbotClient:
 
     def onReadLine(self, data):
         msg = json.loads(data.strip(self.terminator))
-        id = msg[JsonRpcProp.ID]
+        id = msg.get(jsonrpc.Key.ID, None)
 
         if id is None:
             self.onNotification(msg)
-        elif JsonRpcProp.METHOD in msg:
+        elif jsonrpc.Key.METHOD in msg:
             self.onRequest(msg)
         elif id in self.pendingRequests:
             self.onResponseon(msg)
@@ -107,21 +109,20 @@ class BetelbotClient:
         if not self.stream.reading():
             self.stream.read_until(self.terminator, self.onReadLine)
 
-    def onNotification(self, msg):
-        id = msg[JsonRpcProp.ID]        
-        topic = msg[JsonRpcProp.METHOD]
+    def onNotification(self, msg):  
+        topic = msg[jsonrpc.Key.METHOD]
         for subscriber in self.subscriptionHandlers[topic]:
-            subscriber(topic, msg[JsonRpcProp.PARAMS])
+            subscriber(topic, msg[jsonrpc.Key.PARAMS])
 
     def onRequest(self, msg):
-        id = msg[JsonRpcProp.ID]        
-        method = msg[JsonRpcProp.METHOD]
+        id = msg[jsonrpc.Key.ID]        
+        method = msg[jsonrpc.Key.METHOD]
         if method in self.serviceHandlers:
-            self.serviceHandlers[method](id, method, msg[JsonRpcProp.PARAMS])
+            self.serviceHandlers[method](id, method, msg[jsonrpc.Key.PARAMS])
 
     def onResponse(self, msg):
-        result = msg[JsonRpcProp.RESULT]
-        error = msg[JsonRpcProp.ERROR]
+        result = msg[jsonrpc.Key.RESULT]
+        error = msg[jsonrpc.Key.ERROR]
         callback = self.pendingReponses.pop(id, None)
         callback(id, result, error)
 

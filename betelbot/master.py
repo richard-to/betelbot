@@ -13,9 +13,11 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
+import jsonrpc
+
 from topic import msgs
 from util import signalHandler
-from jsonrpc import JsonRpcEncoder, JsonRpcProp
+
 
 
 class BetelbotMethod:
@@ -53,13 +55,13 @@ class BetelbotConnection(object):
         self.stream.set_close_callback(self.onClose)
         self.stream.read_until(self.terminator, self.onReadLine)
         self.streamSet.add(self.stream)
-        self.rpc = JsonRpcEncoder()
+        self.rpc = jsonrpc.Encoder()
  
     def onReadLine(self, data):
         self._logInfo('Reading a message')
         msg = json.loads(data.strip(self.terminator))
-        method = msg[JsonRpcProp.METHOD]
-        params = msg[JsonRpcProp.PARAMS]
+        method = msg[jsonrpc.Key.METHOD]
+        params = msg[jsonrpc.Key.PARAMS]
         numParams = len(params)
         print msg
         if method == BetelbotMethod.PUBLISH and numParams > 1:
@@ -69,10 +71,10 @@ class BetelbotConnection(object):
         elif method == BetelbotMethod.SERVICE and numParams == 1:
             self.service(params[0])
         elif method == BetelbotMethod.REQUEST and numParams > 1:
-            id = msg[JsonRpcProp.ID]
+            id = msg[jsonrpc.Key.ID]
             self.request(id, params[0], *params[1:])
         elif method == BetelbotMethod.RESPONSE and numParams == 2:
-            id = msg[JsonRpcProp.ID]
+            id = msg[jsonrpc.Key.ID]
             self.response(id, params[0], params[1]) 
 
         if not self.stream.reading():
