@@ -56,7 +56,7 @@ class JsonRpcEncoder:
 
     def __init__(self, jsonEncoder=json.JSONEncoder):
         # Pass in a custom JSONEncoder if complex objects need to be encoded.
-        
+
         self.jsonEncoder = jsonEncoder
 
     def request(self, id, method, *params):
@@ -116,6 +116,37 @@ class JsonRpcEncoder:
         
         msg[JsonRpcProp.JSONRPC] = self.VERSION
         return json.dumps(msg, cls=self.jsonEncoder)
+
+
+class JsonRpcIdIncrement:
+    # Generate auto incrementing ids. Not the best option, 
+    # but this will do for now.
+    #
+    # Ids are not guaranteed to be unique.
+    # 
+    # - If increment is set to 0 then the id will be the same each time.
+    # - If multiple instances use the same parameters, then they will 
+    #   generate the same sequence of ids.
+
+    def __init__(self, start=1, prefix='', increment=1):
+        # Defaults to generating the following sequence: 1, 2, 3,...
+        # 
+        # This can be changed by adding a prefix, changing the start 
+        # number, and or changing the increment value.
+        #
+        # Assuming a prefix equal to "PREFIX" and a start of 1, then 
+        # the first id will be PREFIX1".
+
+        self.start = start
+        self.prefix = prefix
+        self.increment = increment
+
+    def id(self):
+        # Generates an id and then increments id.
+        
+        newId = ''.join([self.prefix, str(self.start)])
+        self.start = self.start + self.increment
+        return newId
 
 
 def main():
