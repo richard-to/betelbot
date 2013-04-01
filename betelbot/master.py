@@ -86,7 +86,8 @@ class BetelbotConnection(object):
             topicMeta = self.topics[topic]
             if topicMeta.isValid(args):
                 subscribers = self.topicNames[topic]
-                msg = '{}{}'.format(self.rpc.notification(topic, *args), self.terminator)
+                msg = '{}{}'.format(self.rpc.notification(
+                    BetelbotMethod.ONSUBSCRIBE, topic, *args), self.terminator)
                 for subscriber in subscribers:
                     subscriber.stream.write(msg, subscriber.onWriteComplete)
 
