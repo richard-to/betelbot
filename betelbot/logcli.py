@@ -16,6 +16,7 @@ def onTopicPublished(topic, data=None):
     #
     # This function is designed to be executed by Betelbot client whenever a 
     # subscription receives new data from a publisher.
+
     if data:
         print '[{}]{}'.format(topic, ' '.join(map(str, data)))
 
@@ -25,6 +26,7 @@ def main():
     # received, print to console.
     #
     # The main purpose of this script is for logging messages.
+    
     signal.signal(signal.SIGINT, signalHandler)
 
     config = ConfigParser.SafeConfigParser()
