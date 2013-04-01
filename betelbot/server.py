@@ -14,20 +14,30 @@ from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
 from topic import msgs
-from util import JsonRpcEncoder, JsonRpcProp, BetelBotMethod, signalHandler
+from util import signalHandler
+from jsonrpc import JsonRpcEncoder, JsonRpcProp
 
 
-class BetelBotServer(TCPServer):
+class BetelbotMethod:
+    # Methods supported by Betelbot server
+
+    PUBLISH = 'publish'
+    SUBSCRIBE = 'subscribe'
+    REGISTER = 'register'
+    LOCATE = 'locate'
+
+
+class BetelbotServer(TCPServer):
  
     def __init__(self, io_loop=None, ssl_options=None, **kwargs):
         logging.info('BetelBot Server is running')
         TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options, **kwargs)
  
     def handle_stream(self, stream, address):
-        BetelBotConnection(stream, address)
+        BetelbotConnection(stream, address)
 
 
-class BetelBotConnection(object):
+class BetelbotConnection(object):
  
     streamSet = set([])
     topics = msgs
@@ -51,16 +61,17 @@ class BetelBotConnection(object):
         method = msg[JsonRpcProp.METHOD]
         params = msg[JsonRpcProp.PARAMS]
         numParams = len(params)
-        if method == BetelBotMethod.PUBLISH and numParams > 1:
+        print msg
+        if method == BetelbotMethod.PUBLISH and numParams > 1:
             self.publish(params[0], *params[1:])
-        elif method == BetelBotMethod.SUBSCRIBE and numParams == 1:
+        elif method == BetelbotMethod.SUBSCRIBE and numParams == 1:
             self.subscribe(params[0])
-        elif method == BetelBotMethod.SERVICE and numParams == 1:
+        elif method == BetelbotMethod.SERVICE and numParams == 1:
             self.service(params[0])
-        elif method == BetelBotMethod.REQUEST and numParams > 1:
+        elif method == BetelbotMethod.REQUEST and numParams > 1:
             id = msg[JsonRpcProp.ID]
             self.request(id, params[0], *params[1:])
-        elif method == BetelBotMethod.RESPONSE and numParams == 2:
+        elif method == BetelbotMethod.RESPONSE and numParams == 2:
             id = msg[JsonRpcProp.ID]
             self.response(id, params[0], params[1]) 
 
@@ -87,6 +98,7 @@ class BetelBotConnection(object):
             self.services[method] = self
 
     def request(self, id, method, *params):
+        print method
         if method in self.services:
             self.pendingResponses[id] = self
             service = self.services[method]
@@ -137,7 +149,7 @@ def main():
     logger = logging.getLogger('')
     logger.setLevel(config.get('general', 'log_level'))
 
-    server = BetelBotServer()
+    server = BetelbotServer()
     server.listen(config.getint('server', 'port'))
     IOLoop.instance().start()
 
