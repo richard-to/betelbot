@@ -1,3 +1,4 @@
+import abc
 import fcntl
 import os
 import select
@@ -17,6 +18,78 @@ def signalHandler(signal, frame):
     # Callback is used as a param for this function
     # signal.signal(signal.SIGINT, signalHandler).
     sys.exit(0)
+
+
+class Client(object):
+    # Client is a factory class to create client connections to a server
+    #
+    # - kwargs here is used to pass parameters to Connection objects
+
+    def __init__(self, host, port, connection, terminator='\0', **kwargs):
+        self.host = host
+        self.port = port
+        self.connection = connection
+        self.terminator
+        self.kwargs = kwargs
+
+    def create(self):
+        # Creates and returns a connection object for use.
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
+        stream = IOStream(sock)
+        stream.connect((self.host, self.port))
+        return self.connection(stream, self.terminator, **self.kwargs)
+
+
+class Connection(object):
+    # Abstract connection class handles read, write, and close operations 
+    # on a connected socket. The onRead method needs to be implemented.
+    #
+    # Connection objects can be use for both server and client connections.
+    
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, stream, address, terminator):
+        # Inits a connection object with a connected stream
+
+        self.stream = stream
+        self.address = address
+        self.terminator = terminator
+        self.stream.set_close_callback(self.onClose)
+
+    @abc.abstractmethod
+    def onRead(self, data):
+        # Invoked when streams reads to a terminator character.
+        # Implement this callback to handle incoming data.
+        return
+
+    def onWrite(self):
+        # Invoked when stream has finished writing. By default
+        # the stream will listen for a response.
+
+        self.read()
+
+    def onClose(self):
+        # Invoked when stream is closed.
+        return
+
+    def write(self, msg):
+        # Sends msg to the server.
+
+        self.stream.write("{}{}".format(msg, self.terminator), self.onWrite)
+
+    def read(self):
+        # Reads data from the stream until encounters the specified 
+        # terminator character.
+
+        if not self.stream.reading():
+            self.stream.read_until(self.terminator, self.onRead)
+
+    def close(self):
+        # Disconnects client from server.
+
+        self.stream.close()  
+
 
 
 class NonBlockingTerm:
