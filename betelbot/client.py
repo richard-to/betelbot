@@ -48,8 +48,10 @@ class BetelbotClient:
 
         if topic not in self.subscriptionHandlers:
             self.subscriptionHandlers[topic] = []
+        
         self.subscriptionHandlers[topic].append(callback)
         self.write(self.rpc.notification(BetelbotMethod.SUBSCRIBE, topic))
+
         if not self.stream.reading():
             self.stream.read_until(self.terminator, self.onReadLine)
 
@@ -65,6 +67,7 @@ class BetelbotClient:
 
         self.serviceHandlers[method] = callback      
         self.write(self.rpc.notification(BetelbotMethod.REGISTER, method))
+        
         if not self.stream.reading():
             self.stream.read_until(self.terminator, self.onReadLine)        
     
