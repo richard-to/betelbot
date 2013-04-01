@@ -7,8 +7,8 @@ import threading
 from tornado.ioloop import IOLoop
 
 from topic import cmdTopic
-from util import NonBlockingTerm
-from client import BetelbotClient
+from util import NonBlockingTerm, Client
+from client import BetelbotClientConnection
 
 
 def threadedLoop():
@@ -29,8 +29,9 @@ def onInput(client):
 def main():
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
-    client = BetelbotClient('', config.getint('server', 'port'))
-    client.subscribe(cmdTopic.id, onCmdPublished)
+    client =Client('', config.getint('server', 'port'), BetelbotClientConnection)
+    conn = client.create()
+    conn.subscribe(cmdTopic.id, onCmdPublished)
 
     thread = threading.Thread(target=threadedLoop)
     thread.daemon = True
@@ -41,7 +42,7 @@ def main():
     print "Use [h,j,k,l] to move and [s] to stop."
 
     term = NonBlockingTerm()
-    term.run(lambda: onInput(client))
+    term.run(lambda: onInput(conn))
 
 
 if __name__ == "__main__":
