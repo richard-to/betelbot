@@ -19,7 +19,7 @@ class ValueTopic(object):
         self.allowedValues = allowedValues
         self.numParams = numParams
 
-    def isValid(self, data):
+    def isValid(self, *data):
         if len(data) == self.numParams:
             return all(value in self.allowedValues for value in data)
         else:
