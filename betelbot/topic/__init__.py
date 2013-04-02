@@ -27,6 +27,6 @@ class ValueTopic(object):
 
 
 def getTopics():
-    # Loads all topics into dictionary with topic id as key.
+    # Loads all topic definitions into dictionary with topic id as key.
 
     return loadMsgDictFromPkg(__file__)
