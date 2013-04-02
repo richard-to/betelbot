@@ -67,7 +67,7 @@ class BetelbotClientConnection(JsonRpcConnection):
     def locate(self, id, method, callback=None):
         # Locate the address of a service
 
-        self.methodHandlers[method] = callback
+        self.responseHandlers[id] = callback
         self.write(self.encoder.request(id, BetelbotMethod.LOCATE, method))
 
     def handleNotifySub(self, msg):
