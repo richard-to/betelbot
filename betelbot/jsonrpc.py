@@ -177,6 +177,7 @@ class JsonRpcConnection(Connection):
             self.methodHandlers[method](msg)   
         elif id in self.responseHandlers:
             self.responseHandlers[id](msg)
+            del self.responseHandlers[id]
 
         self.read()
                     
