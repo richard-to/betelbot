@@ -100,9 +100,9 @@ class BetelbotConnection(JsonRpcConnection):
         self.methodHandlers = {
             BetelbotMethod.PUBLISH: self.handlePublish,
             BetelbotMethod.SUBSCRIBE: self.handleSubscribe,
-            BetelbotMethod.REGISTER: self.handleRegister
+            BetelbotMethod.REGISTER: self.handleRegister,
+            BetelbotMethod.LOCATE: self.handleLocate
         }
-
         self.read()
  
     def handlePublish(self, msg):
@@ -147,7 +147,31 @@ class BetelbotConnection(JsonRpcConnection):
         if len(params) == 3:
             method, host, port = params            
             self.logInfo('Registering service "{}"'.format(method))            
-            self.services[method] = (host, port, self.stream)
+            self.services[method] = (host, port)
+
+    def handleLocate(self, msg):
+        # Handles "locate" operation
+        #
+        # The locate operation returns the address of service
+        
+        id = msg.get(jsonrpc.Key.ID, None)
+        params = msg.get(jsonrpc.Key.PARAMS, None)
+        
+        if not id:
+            # Send invalid params
+            pass
+        elif not len(params) == 1:
+            # Send invalid params
+            pass
+        else:
+            method = params[0]            
+            self.logInfo('Locating service "{}"'.format(method))
+            if method in self.services:          
+                host, port = self.services[method]
+                self.write(self.encoder.response(id, host, port))
+            else:
+                # Send invalid request
+                pass    
 
     def onWrite(self):
         self.logInfo('Sending message')
