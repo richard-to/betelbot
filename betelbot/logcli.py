@@ -6,7 +6,7 @@ import signal
 
 from tornado.ioloop import IOLoop
 
-from client import BetelbotConnection
+from client import BetelbotClientConnection
 from topic import getTopics
 from util import Client, signalHandler
 
@@ -32,7 +32,7 @@ def main():
 
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
-    client = Client('', config.getint('server', 'port'), BetelbotConnection)
+    client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
     conn = client.connect()
     topics = getTopics()
     for topic in topics:
