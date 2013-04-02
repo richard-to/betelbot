@@ -10,7 +10,7 @@ from master import BetelbotMethod
 from util import Client, Connection
 
 
-class BetelbotConnection(Connection):
+class BetelbotClientConnection(Connection):
     # Betelbot client connections are persistent tcp connections
     # that send/receive messages from Betelbot server using JSON-RPC 2.0.
     #
@@ -21,17 +21,17 @@ class BetelbotConnection(Connection):
     # - Publish info to topics
     # - Subscribe to topics
     # - Register a service on server
-    # - Locate a service
+    # - Locate a registered service
     #
     # If service requests/notifications are required, use the connection class
     # in jsonrpc module.
 
     def __init__(self, stream, address, terminator, encoder=jsonrpc.Encoder()):
-        super(BetelbotConnection, self).__init__(stream, address, terminator)        
+        super(BetelbotClientConnection, self).__init__(stream, address, terminator)        
         self.encoder = encoder
         self.subscriptionHandlers = {}
         self.msgHandlers = {
-            BetelbotMethod.ONSUBSCRIBE: self.onSubscribe
+            BetelbotMethod.NOTIFYSUB: self.handleNotifySub
         }
 
     def publish(self, topic, *params):
@@ -76,10 +76,8 @@ class BetelbotConnection(Connection):
             self.msgHandlers[method](msg)          
         self.read()
 
-    def onSubscribe(self, msg):  
-        # A subscription notification consists of at least 2 parameters.
-        # The first parameter is the name of the topic, and the other 
-        # parameters are data.
+    def handleNotifySub(self, msg):
+        # Handles subscription notifcation.
         #
         # The subscription handler will send this data along to local
         # subscribers.
@@ -95,12 +93,6 @@ class BetelbotConnection(Connection):
             if topic in self.subscriptionHandlers:
                 for subscriber in self.subscriptionHandlers[topic]:
                     subscriber(topic, data)
-
-
-    def close():
-        # Disconnects client from server.
-
-        self.stream.close()
 
 
 if __name__ == '__main__':
