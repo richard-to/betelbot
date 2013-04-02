@@ -15,6 +15,7 @@ import tty
 from tornado.iostream import IOStream
 from tornado.ioloop import IOLoop
 
+
 def loadMsgDictFromPkg(pkgFile):
     # Dynamically loads all classes in specified package and 
     # returns a dictionary with the key as the id value of the topic.
@@ -69,6 +70,7 @@ def loadModuleClasses(module):
     # would be the common use case.
     #
     # This returns a list of tuples with the format of (className, class)
+    
     return inspect.getmembers(module, lambda o: inspect.isclass(o) and o.__module__ == module.__name__)
 
 
