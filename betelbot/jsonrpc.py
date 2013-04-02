@@ -76,7 +76,7 @@ class Encoder(object):
             msg[Key.PARAMS] = params
         return self.encode(msg)
 
-    def response(self, id, result):
+    def response(self, id, *result):
         # Encodes a JSON object to be sent as a response to a request.
         #
         # - An id and result are required.
@@ -153,20 +153,31 @@ class IdIncrement(object):
 
 
 class JsonRpcConnection(Connection):
+    # Extend Connection object to work with JsonRpc.
+    #
+    # Main additions are jsonrpc encoder and an implementation 
+    # for onRead method that dispatches to various methodHandler
+    # callbacks.
 
     def __init__(self, stream, address, encoder=Encoder()):
         super(JsonRpcConnection, self).__init__(stream, address)
         self.encoder = encoder
         self.methodHandlers = {}
+        self.responseHandlers = {}
 
     def onRead(self, data):
         # When data is received parse json message and call 
         # corresponding method handler.
         
         msg = json.loads(data.strip(self.terminator))
+        id = msg.get(Key.ID, None)
         method = msg.get(Key.METHOD, None)
+
         if method in self.methodHandlers:
             self.methodHandlers[method](msg)   
+        elif id in self.responseHandlers:
+            self.responseHandlers[id](msg)
+
         self.read()
                     
 
@@ -193,7 +204,7 @@ class ClientConnection(JsonRpcConnection):
         # Sends a request. This method is nonblocking, so a callback 
         # is necessary to handle the eventual response.
 
-        self.methodHandlers[method] = callback
+        self.responseHandlers[id] = callback
         self.write(self.encoder.request(id, method, *params))
 
     def onRead(self, data):
