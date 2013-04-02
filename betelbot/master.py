@@ -16,129 +16,125 @@ from tornado.netutil import TCPServer
 import jsonrpc
 
 from topic import getTopics
-from util import signalHandler
+from util import signalHandler, Connection
 
 
 class BetelbotMethod:
     # Methods supported by Betelbot server
 
+    # - Method: publish
+    # - Params: topic, data 
+    # - Type: Notification    
     PUBLISH = 'publish'
+
+    # - Type: Notification
+    # - Method: subscribe
+    # - Params: topic     
     SUBSCRIBE = 'subscribe'
+
+    # - Type: Notification
+    # - Method: notifysub
+    # - Params: topic, data    
+    NOTIFYSUB = 'notifysub'
+
+    # Not implemented yet
     REGISTER = 'register'
     LOCATE = 'locate'
-    ONSUBSCRIBE = 'onsubscribe'
 
 
 class BetelbotServer(TCPServer):
- 
-    def __init__(self, io_loop=None, ssl_options=None, **kwargs):
+    # Master Betelbot server.
+    #
+    # Supported operations:
+    #
+    # - Manages publishers/subscribers
+    # - Registers service methods
+    # - Locates address of registered service methods for clients
+
+
+    def __init__(self, topics, io_loop=None, ssl_options=None, **kwargs):
         logging.info('BetelBot Server is running')
         TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options, **kwargs)
- 
+        self.conns = []
+        self.topics = topics
+        self.topicSubscribers = dict((key,[]) for key in topics.keys()) 
+    
     def handle_stream(self, stream, address):
-        BetelbotConnection(stream, address)
+        BetelbotConnection(stream, address, self.topics, self.topicSubscribers)
 
 
-class BetelbotConnection(object):
+
+class BetelbotConnection(Connection):
+    # BetelbotConnection is created when a client connects to the Betelbot server.
+
+    def __init__(self, stream, address, topics, topicSubscribers, terminator='\0', encoder=jsonrpc.Encoder()):
+        super(BetelbotConnection, self).__init__(stream, address, terminator)        
+        self.logInfo('Received a new connection')
+        self.topics = topics
+        self.topicSubscribers = topicSubscribers
+        self.read()
+        self.encoder = encoder
+        self.methodHandlers = {
+            BetelbotMethod.PUBLISH: self.handlePublish,
+            BetelbotMethod.SUBSCRIBE: self.handleSubscribe
+        }
  
-    streamSet = set([])
-    topics = getTopics()
-    topicNames = dict((key,[]) for key in topics.keys())
-    services = {}
-    pendingResponses = {}
+    def onRead(self, data):
+        # Overrides on onRead method to handle Betelbot server operations.
 
-    def __init__(self, stream, address, terminator='\0'):
-        self.address = address
-        self._logInfo('Received a new connection')
-        self.terminator = terminator
-        self.stream = stream
-        self.stream.set_close_callback(self.onClose)
-        self.stream.read_until(self.terminator, self.onReadLine)
-        self.streamSet.add(self.stream)
-        self.rpc = jsonrpc.Encoder()
- 
-    def onReadLine(self, data):
-        self._logInfo('Reading a message')
+        self.logInfo('Reading a message')
+
         msg = json.loads(data.strip(self.terminator))
-        method = msg[jsonrpc.Key.METHOD]
-        params = msg[jsonrpc.Key.PARAMS]
-        numParams = len(params)
-        print msg
-        if method == BetelbotMethod.PUBLISH and numParams > 1:
-            self.publish(params[0], *params[1:])
-        elif method == BetelbotMethod.SUBSCRIBE and numParams == 1:
-            self.subscribe(params[0])
-        elif method == BetelbotMethod.SERVICE and numParams == 1:
-            self.service(params[0])
-        elif method == BetelbotMethod.REQUEST and numParams > 1:
-            id = msg[jsonrpc.Key.ID]
-            self.request(id, params[0], *params[1:])
-        elif method == BetelbotMethod.RESPONSE and numParams == 2:
-            id = msg[jsonrpc.Key.ID]
-            self.response(id, params[0], params[1]) 
+        method = msg.get(jsonrpc.Key.METHOD, None)
+        if method in self.methodHandlers:
+            self.methodHandlers[method](msg)
+        self.read()
 
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)
+    def handlePublish(self, msg):
+        # Handles "publish" operation.
+        # 
+        # Topics are validated for correct data types and then
+        # data is sent to subscribers using notifySub operation.
 
-    def publish(self, topic, *args):
-        if topic in self.topicNames and len(args) > 0:
-            topicMeta = self.topics[topic]
-            if topicMeta.isValid(*args):
-                subscribers = self.topicNames[topic]
-                msg = '{}{}'.format(self.rpc.notification(
-                    BetelbotMethod.ONSUBSCRIBE, topic, *args), self.terminator)
+        params = msg.get(jsonrpc.Key.PARAMS, None)
+        if len(params) > 1:
+            topic = params[0]
+            data = params[1:]
+            topicObj = self.topics.get(topic, None)        
+            if topicObj and topicObj.isValid(*data):
+                subscribers = self.topicSubscribers[topic]
+                msg = self.encoder.notification(BetelbotMethod.NOTIFYSUB, topic, *data)
                 for subscriber in subscribers:
-                    subscriber.stream.write(msg, subscriber.onWriteComplete)
+                    subscriber.write(msg)
 
-    def subscribe(self, topic):
-        if topic in self.topicNames:
-            self._logInfo('Subscribing to topic "{}"'.format(topic))
-            self.topicNames[topic].append(self)
+    def handleSubscribe(self, msg):
+        # Handles "subscribe" operation.
+        # 
+        # Subscribers are added to topic list so they can
+        # be notified later.
 
-    def service(self, method):
-        if method not in self.services:
-            self._logInfo('Registering service "{}"'.format(method))
-            self.services[method] = self
+        params = msg.get(jsonrpc.Key.PARAMS, None)
+        if len(params) == 1:
+            topic = params[0]  
+            if topic in self.topicSubscribers:
+                self.logInfo('Subscribing to topic "{}"'.format(topic))
+                self.topicSubscribers[topic].append(self)
 
-    def request(self, id, method, *params):
-        print method
-        if method in self.services:
-            self.pendingResponses[id] = self
-            service = self.services[method]
-            msg = '{}{}'.format(self.rpc.request(id, method, *params), self.terminator)
-            service.stream.write(msg, service.onWriteComplete)
-
-    def response(self, id, result, error=None):
-        if id in self.pendingResponses:
-            client = self.pendingReponses.pop(id, None)
-            msg = '{}{}'.format(self.rpc.response(id, result, error), self.terminator)
-            service.stream.write(msg, service.onWriteComplete)
-
-    def onWriteComplete(self):
-        self._logInfo('Sending message')
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)
+    def onWrite(self):
+        self.logInfo('Sending message')
+        self.read()
  
     def onClose(self):
-        self._logInfo('Client quit')
-        for topic in self.topicNames:
-            if self in self.topicNames[topic]:
-                self._logInfo('Unsubscribing client from topic "{}"'.format(topic))        
-                self.topicNames[topic].remove(self)
-        
-        for method in self.services:
-            if self.services[method] == self:
-                self._logInfo('Deregistering service "{}"'.format(method))        
-                del self.services[method]
+        # When a stream closes its connection, its subscriptions need 
+        # to be removed.
 
-        for id in self.pendingResponses:
-            if self.pendingResponses[id] == self:
-                self._logInfo("Removing client's pending responses")        
-                del self.pendingResponses[id] 
+        self.logInfo('Client quit')
+        for topic in self.topicSubscribers:
+            if self in self.topicSubscribers[topic]:
+                self.logInfo('Unsubscribing client from topic "{}"'.format(topic))        
+                self.topicSubscribers[topic].remove(self)
 
-        self.streamSet.remove(self.stream)
-
-    def _logInfo(self, msg):
+    def logInfo(self, msg):
         dt = datetime.now().strftime("%m-%d-%y %H:%M")
         logging.info('[%s, %s]%s', self.address[0], dt, msg)
 
@@ -152,8 +148,9 @@ def main():
     logger = logging.getLogger('')
     logger.setLevel(config.get('general', 'log_level'))
 
-    server = BetelbotServer()
+    server = BetelbotServer(getTopics())
     server.listen(config.getint('server', 'port'))
+    
     IOLoop.instance().start()
 
 
