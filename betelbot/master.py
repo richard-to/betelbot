@@ -15,9 +15,8 @@ from tornado.netutil import TCPServer
 
 import jsonrpc
 
-from topic import msgs
+from topic import getTopics
 from util import signalHandler
-
 
 
 class BetelbotMethod:
@@ -43,8 +42,8 @@ class BetelbotServer(TCPServer):
 class BetelbotConnection(object):
  
     streamSet = set([])
-    topics = msgs
-    topicNames = dict((key,[]) for key in msgs.keys())
+    topics = getTopics()
+    topicNames = dict((key,[]) for key in topics.keys())
     services = {}
     pendingResponses = {}
 
@@ -84,7 +83,7 @@ class BetelbotConnection(object):
     def publish(self, topic, *args):
         if topic in self.topicNames and len(args) > 0:
             topicMeta = self.topics[topic]
-            if topicMeta.isValid(args):
+            if topicMeta.isValid(*args):
                 subscribers = self.topicNames[topic]
                 msg = '{}{}'.format(self.rpc.notification(
                     BetelbotMethod.ONSUBSCRIBE, topic, *args), self.terminator)
