@@ -13,12 +13,11 @@ import time
 import tty
 
 from tornado.iostream import IOStream
-
+from tornado.ioloop import IOLoop
 
 def loadMsgDictFromPkg(pkgFile):
     # Dynamically loads all classes in specified package and 
-    # returns a dictionary with the key as the id value of the topic
-    # or service class.
+    # returns a dictionary with the key as the id value of the topic.
     #
     # This method should only be used in packages that contain only
     # topic and service typc classes.
@@ -31,13 +30,13 @@ def loadMsgDictFromPkg(pkgFile):
 
 
 def loadMsgDict(msgObj):
-    # Dynamically load topic/service classes into a
+    # Dynamically load topic classes into a
     # dictionary.
     #
     # Betelbot servers and clients use this dictionary to validate 
-    # topics and services.
+    # topics.
     #
-    # The key will be the id value of the topic or service class.
+    # The key will be the id value of the topic class.
 
     msgDict = {}
     for name, obj in msgObj:
@@ -51,8 +50,8 @@ def loadPkgModules(pkgFile):
     #
     # This function requires the directory path of the package.
     #
-    # The main use case for this function is to load Topic and Service 
-    # definitions. This means that the modules will be loaded from the Package 
+    # The main use case for this function is to load Topic definitions. 
+    # This means that the modules will be loaded from the Package 
     # __init__.py file and will make it so the directory path can be retrieved 
     # using the __file__ variable.
 
@@ -68,6 +67,7 @@ def loadModuleClasses(module):
     # This function will only get classes defined a the specified module. 
     # Classes that imported from within the module are ignored since that 
     # would be the common use case.
+    #
     # This returns a list of tuples with the format of (className, class)
     return inspect.getmembers(module, lambda o: inspect.isclass(o) and o.__module__ == module.__name__)
 
@@ -134,6 +134,20 @@ class Connection(object):
 
     def onClose(self):
         # Invoked when stream is closed.
+        #
+        # Currently not sure how to handle closed connections.
+        #
+        # One possibility is to call IOLoop.instance().stop(), 
+        # but this only works for non-threaded case.
+        #
+        # Additionally this appraoch uses the global object.
+        #
+        # Other drawbacks include non-persistent connections 
+        # where we don't necessarily want the loop closed.
+        #
+        # Maybe just catch the exception and exit gracefully in the
+        # case of client connections?
+
         return
 
     def write(self, msg):
@@ -150,8 +164,8 @@ class Connection(object):
 
     def close(self):
         # Disconnects client from server.
-
-        self.stream.close()  
+        if self.stream:
+            self.stream.close()  
 
 
 
@@ -173,7 +187,8 @@ class NonBlockingTerm:
         # for every key press.
         #
         # This implementation does not handle multi-byte characters, such as 
-        # arrow keys. A previous version of this code did handle this case.
+        # arrow keys. A previous version of this code did handle this case, but
+        # decided that it got kind of messy.
 
         signal.signal(signal.SIGINT, signalHandler)
         
