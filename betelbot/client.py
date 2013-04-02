@@ -6,11 +6,12 @@ from tornado.iostream import IOStream
 
 import jsonrpc
 
+from jsonrpc import JsonRpcConnection
 from master import BetelbotMethod
-from util import Client, Connection
+from util import Client
 
 
-class BetelbotClientConnection(Connection):
+class BetelbotClientConnection(JsonRpcConnection):
     # Betelbot client connections are persistent tcp connections
     # that send/receive messages from Betelbot server using JSON-RPC 2.0.
     #
@@ -26,11 +27,10 @@ class BetelbotClientConnection(Connection):
     # If service requests/notifications are required, use the connection class
     # in jsonrpc module.
 
-    def __init__(self, stream, address, terminator, encoder=jsonrpc.Encoder()):
-        super(BetelbotClientConnection, self).__init__(stream, address, terminator)        
-        self.encoder = encoder
+    def __init__(self, stream, address):
+        super(BetelbotClientConnection, self).__init__(stream, address)
         self.subscriptionHandlers = {}
-        self.msgHandlers = {
+        self.methodHandlers = {
             BetelbotMethod.NOTIFYSUB: self.handleNotifySub
         }
 
@@ -63,18 +63,6 @@ class BetelbotClientConnection(Connection):
         # a method at a time.
      
         self.write(self.encoder.notification(BetelbotMethod.REGISTER, method, host, port))
-
-    def onRead(self, data):
-        # When data is received parse json message and call 
-        # corresponding method handler.
-        #
-        # Currently only subscription notifications are handled.
-        
-        msg = json.loads(data.strip(self.terminator))
-        method = msg.get(jsonrpc.Key.METHOD, None)
-        if method in self.msgHandlers:
-            self.msgHandlers[method](msg)          
-        self.read()
 
     def handleNotifySub(self, msg):
         # Handles subscription notifcation.
