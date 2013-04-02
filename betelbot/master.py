@@ -15,6 +15,7 @@ from tornado.netutil import TCPServer
 
 import jsonrpc
 
+from jsonrpc import JsonRpcConnection
 from topic import getTopics
 from util import signalHandler, Connection
 
@@ -37,9 +38,28 @@ class BetelbotMethod:
     # - Params: topic, data    
     NOTIFYSUB = 'notifysub'
 
-    # Not implemented yet
+    # - Type: Notification
+    # - Method: register
+    # - Params: method, host, port 
     REGISTER = 'register'
+
+    # - Type: Request
+    # - Method: locate
+    # - Params method
+    # - Response: host, port
     LOCATE = 'locate'
+
+
+class BetelbotData:
+    # Global data object shared by Betelbot server connections
+    #
+    # - topics are a dict of topic objects that contain validation rules.    
+    # - topicSubscribers is a dict of subscribers to a specific topic.
+    # - services are a dict of methods with host and port locations.
+    def __init__(self):
+        self.topics = {}        
+        self.topicSubscribers = {}
+        self.services = {}
 
 
 class BetelbotServer(TCPServer):
@@ -55,41 +75,36 @@ class BetelbotServer(TCPServer):
     def __init__(self, topics, io_loop=None, ssl_options=None, **kwargs):
         logging.info('BetelBot Server is running')
         TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options, **kwargs)
-        self.conns = []
-        self.topics = topics
-        self.topicSubscribers = dict((key,[]) for key in topics.keys()) 
+        
+        self.data = BetelbotData()
+        self.data.topics = topics
+        self.data.topicSubscribers = dict((key,[]) for key in topics.keys())
+        self.data.services = {}
     
     def handle_stream(self, stream, address):
-        BetelbotConnection(stream, address, self.topics, self.topicSubscribers)
+        BetelbotConnection(stream, address, self.data)
 
 
-
-class BetelbotConnection(Connection):
+class BetelbotConnection(JsonRpcConnection):
     # BetelbotConnection is created when a client connects to the Betelbot server.
 
-    def __init__(self, stream, address, topics, topicSubscribers, terminator='\0', encoder=jsonrpc.Encoder()):
-        super(BetelbotConnection, self).__init__(stream, address, terminator)        
+    def __init__(self, stream, address, data):
+        super(BetelbotConnection, self).__init__(stream, address)        
         self.logInfo('Received a new connection')
-        self.topics = topics
-        self.topicSubscribers = topicSubscribers
-        self.read()
-        self.encoder = encoder
+        
+        self.data = data
+        self.topics = data.topics
+        self.topicSubscribers = data.topicSubscribers
+        self.services = data.services
+
         self.methodHandlers = {
             BetelbotMethod.PUBLISH: self.handlePublish,
-            BetelbotMethod.SUBSCRIBE: self.handleSubscribe
+            BetelbotMethod.SUBSCRIBE: self.handleSubscribe,
+            BetelbotMethod.REGISTER: self.handleRegister
         }
- 
-    def onRead(self, data):
-        # Overrides on onRead method to handle Betelbot server operations.
 
-        self.logInfo('Reading a message')
-
-        msg = json.loads(data.strip(self.terminator))
-        method = msg.get(jsonrpc.Key.METHOD, None)
-        if method in self.methodHandlers:
-            self.methodHandlers[method](msg)
         self.read()
-
+ 
     def handlePublish(self, msg):
         # Handles "publish" operation.
         # 
@@ -119,6 +134,20 @@ class BetelbotConnection(Connection):
             if topic in self.topicSubscribers:
                 self.logInfo('Subscribing to topic "{}"'.format(topic))
                 self.topicSubscribers[topic].append(self)
+
+    def handleRegister(self, msg):
+        # Handles "register" operation
+        #
+        # Registers a service method. If another client registers an existing 
+        # method, then the host and port will be overwritten.
+        #
+        # Currently services can't be unregistered, even if the service disconnects
+
+        params = msg.get(jsonrpc.Key.PARAMS, None)
+        if len(params) == 3:
+            method, host, port = params            
+            self.logInfo('Registering service "{}"'.format(method))            
+            self.services[method] = (host, port, self.stream)
 
     def onWrite(self):
         self.logInfo('Sending message')
