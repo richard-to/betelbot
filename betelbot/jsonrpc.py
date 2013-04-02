@@ -152,7 +152,25 @@ class IdIncrement(object):
         return newId
 
 
-class ClientConnection(Connection):
+class JsonRpcConnection(Connection):
+
+    def __init__(self, stream, address, encoder=Encoder()):
+        super(JsonRpcConnection, self).__init__(stream, address)
+        self.encoder = encoder
+        self.methodHandlers = {}
+
+    def onRead(self, data):
+        # When data is received parse json message and call 
+        # corresponding method handler.
+        
+        msg = json.loads(data.strip(self.terminator))
+        method = msg.get(Key.METHOD, None)
+        if method in self.methodHandlers:
+            self.methodHandlers[method](msg)   
+        self.read()
+                    
+
+class ClientConnection(JsonRpcConnection):
     # Extends Connection class to handle a JSON-RPC notification or request.
     # 
     # Connections are best created from the Client class in the util module.
@@ -161,8 +179,8 @@ class ClientConnection(Connection):
     # - If a request is sent, connection closes when a response is received.
     # - A timeout parameter could be useful.
 
-    def __init__(self, stream, address, terminator, encoder=Encoder()):
-        super(ClientConnection, self).__init__(stream, address, terminator)
+    def __init__(self, stream, address):
+        super(ClientConnection, self).__init__(stream, address)
         self.encoder = encoder
 
     def notification(self, method, *params):
@@ -175,17 +193,14 @@ class ClientConnection(Connection):
         # Sends a request. This method is nonblocking, so a callback 
         # is necessary to handle the eventual response.
 
-        self.callback = callback
+        self.methodHandlers[method] = callback
         self.write(self.encoder.request(id, method, *params))
 
     def onRead(self, data):
         # Handles response from server by calling specified 
         # callback and closing connection.
 
-        if self.callback:
-            msg = json.loads(data.strip(self.terminator))
-            self.callback(msg)
-            self.callback = None
+        super(ClientConnection, self).onRead(data)
         self.close()
 
 
