@@ -15,7 +15,7 @@ from tornado.netutil import TCPServer
 
 import jsonrpc
 
-from jsonrpc import JsonRpcConnection
+from jsonrpc import JsonRpcConnection, JsonRpcServer
 from topic import getTopics
 from util import signalHandler, Connection
 
@@ -50,19 +50,7 @@ class BetelbotMethod:
     LOCATE = 'locate'
 
 
-class BetelbotData:
-    # Global data object shared by Betelbot server connections
-    #
-    # - topics are a dict of topic objects that contain validation rules.    
-    # - topicSubscribers is a dict of subscribers to a specific topic.
-    # - services are a dict of methods with host and port locations.
-    def __init__(self):
-        self.topics = {}        
-        self.topicSubscribers = {}
-        self.services = {}
-
-
-class BetelbotServer(TCPServer):
+class BetelbotServer(JsonRpcServer):
     # Master Betelbot server.
     #
     # Supported operations:
@@ -71,31 +59,27 @@ class BetelbotServer(TCPServer):
     # - Registers service methods
     # - Locates address of registered service methods for clients
 
-
-    def __init__(self, topics, io_loop=None, ssl_options=None, **kwargs):
+    def onInit(self, **kwargs):
         logging.info('BetelBot Server is running')
-        TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options, **kwargs)
-        
-        self.data = BetelbotData()
-        self.data.topics = topics
-        self.data.topicSubscribers = dict((key,[]) for key in topics.keys())
-        self.data.services = {}
+
+        topics = kwargs.get('topics', getTopics())
+        self.data['topics'] = topics
+        self.data['topicSubscribers'] = dict((key,[]) for key in topics.keys())
+        self.data['services'] = {}
     
     def handle_stream(self, stream, address):
-        BetelbotConnection(stream, address, self.data)
+        BetelbotConnection(stream, address, **self.data)
 
 
 class BetelbotConnection(JsonRpcConnection):
     # BetelbotConnection is created when a client connects to the Betelbot server.
 
-    def __init__(self, stream, address, data):
-        super(BetelbotConnection, self).__init__(stream, address)        
+    def onInit(self, **kwargs):
         self.logInfo('Received a new connection')
         
-        self.data = data
-        self.topics = data.topics
-        self.topicSubscribers = data.topicSubscribers
-        self.services = data.services
+        self.topics = kwargs.get('topics', [])
+        self.topicSubscribers = kwargs.get('topicSubscribers', {})
+        self.services = kwargs.get('services', {})
 
         self.methodHandlers = {
             BetelbotMethod.PUBLISH: self.handlePublish,
@@ -104,7 +88,7 @@ class BetelbotConnection(JsonRpcConnection):
             BetelbotMethod.LOCATE: self.handleLocate
         }
         self.read()
- 
+
     def handlePublish(self, msg):
         # Handles "publish" operation.
         # 
@@ -201,7 +185,7 @@ def main():
     logger = logging.getLogger('')
     logger.setLevel(config.get('general', 'log_level'))
 
-    server = BetelbotServer(getTopics())
+    server = BetelbotServer(topics=getTopics())
     server.listen(config.getint('server', 'port'))
     
     IOLoop.instance().start()
