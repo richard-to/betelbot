@@ -2,6 +2,8 @@ import abc
 import json
 import socket
 
+from tornado.netutil import TCPServer
+
 from util import Connection
 
 # Betelbot servers and clients communicate using JSON-RPC 2.0.
@@ -152,6 +154,25 @@ class IdIncrement(object):
         return newId
 
 
+class JsonRpcServer(TCPServer):
+ 
+    def __init__(self, io_loop=None, ssl_options=None, **kwargs):       
+        TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options)
+        self.connection = kwargs.pop('connection', JsonRpcConnection)
+        self.encoder = kwargs.pop('encoder', Encoder())
+        self.data = {}
+        self.onInit(**kwargs)
+
+    def onInit(self, **kwargs):
+        return
+
+    def setData(self, **kwargs):
+        self.data = kwargs
+
+    def handle_stream(self, stream, address):
+        self.connection(stream, address, encoder=self.encoder, **self.data)
+
+
 class JsonRpcConnection(Connection):
     # Extend Connection object to work with JsonRpc.
     #
@@ -159,11 +180,12 @@ class JsonRpcConnection(Connection):
     # for onRead method that dispatches to various methodHandler
     # callbacks.
 
-    def __init__(self, stream, address, encoder=Encoder()):
-        super(JsonRpcConnection, self).__init__(stream, address)
-        self.encoder = encoder
+    def __init__(self, stream, address, terminator='\0', **kwargs):
+        self.encoder = kwargs.pop('encoder', Encoder())
         self.methodHandlers = {}
         self.responseHandlers = {}
+        
+        super(JsonRpcConnection, self).__init__(stream, address, terminator, **kwargs)
 
     def onRead(self, data):
         # When data is received parse json message and call 
@@ -190,10 +212,6 @@ class ClientConnection(JsonRpcConnection):
     # - If a notification is sent, then the connection closes immediately.
     # - If a request is sent, connection closes when a response is received.
     # - A timeout parameter could be useful.
-
-    def __init__(self, stream, address):
-        super(ClientConnection, self).__init__(stream, address)
-        self.encoder = encoder
 
     def notification(self, method, *params):
         # Sends a notification to server and closes connection.
