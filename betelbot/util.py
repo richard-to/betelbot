@@ -90,10 +90,11 @@ class Client(object):
     #
     # - kwargs here is used to pass parameters to Connection objects
 
-    def __init__(self, host, port, connection, **kwargs):
+    def __init__(self, host, port, connection, terminator='\0', **kwargs):
         self.host = host
         self.port = port
         self.connection = connection
+        self.terminator = terminator
         self.kwargs = kwargs
 
     def connect(self):
@@ -102,7 +103,7 @@ class Client(object):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         stream = IOStream(sock)
         stream.connect((self.host, self.port))
-        return self.connection(stream, sock.getsockname(), **self.kwargs)
+        return self.connection(stream, sock.getsockname(), self.terminator, **self.kwargs)
 
 
 class Connection(object):
@@ -113,13 +114,18 @@ class Connection(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, stream, address, terminator='\0'):
+    def __init__(self, stream, address, terminator='\0', **kwargs):
         # Inits a connection object with a connected stream
 
         self.stream = stream
         self.address = address
         self.terminator = terminator
         self.stream.set_close_callback(self.onClose)
+
+        self.onInit(**kwargs)
+
+    def onInit(self, **kwargs):
+        return
 
     @abc.abstractmethod
     def onRead(self, data):
