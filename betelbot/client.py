@@ -26,9 +26,8 @@ class BetelbotClientConnection(JsonRpcConnection):
     #
     # If service requests/notifications are required, use the connection class
     # in jsonrpc module.
-
-    def __init__(self, stream, address):
-        super(BetelbotClientConnection, self).__init__(stream, address)
+    
+    def onInit(self, **kwargs):
         self.subscriptionHandlers = {}
         self.methodHandlers = {
             BetelbotMethod.NOTIFYSUB: self.handleNotifySub
