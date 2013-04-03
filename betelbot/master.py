@@ -66,9 +66,6 @@ class BetelbotServer(JsonRpcServer):
         self.data['topics'] = topics
         self.data['topicSubscribers'] = dict((key,[]) for key in topics.keys())
         self.data['services'] = {}
-    
-    def handle_stream(self, stream, address):
-        BetelbotConnection(stream, address, **self.data)
 
 
 class BetelbotConnection(JsonRpcConnection):
@@ -185,7 +182,7 @@ def main():
     logger = logging.getLogger('')
     logger.setLevel(config.get('general', 'log_level'))
 
-    server = BetelbotServer(topics=getTopics())
+    server = BetelbotServer(connection=BetelbotConnection, topics=getTopics())
     server.listen(config.getint('server', 'port'))
     
     IOLoop.instance().start()
