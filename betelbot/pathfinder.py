@@ -13,27 +13,62 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
-from map import simple_world
-from topic import searchTopic, moveTopic, senseTopic
-from util import BetelBotClient, signalHandler
+from client import BetelbotClientConnection
+from util import Client, signalHandler
 
 
 def euclideanDistance(x, y, goalX, goalY):
+    # Heuristic function for A*.
+    #
+    # Calculates euclidean distance to measure
+    # distance from goal.
+
     xDist = (x - goalX)
     yDist = (y - goalY)
     return xDist * xDist + yDist * yDist
 
 
 class PathFinder:
+    # Searches for the shortest path given a discrete map.
+    #
+    # The map is a 2-d numpy array with x-cols and y-rows.
+    #
+    # For Betelbot, a grayscale map image is first converted to an array 
+    # with 255(white) being an open cell and 0(black) representing walls.
+    #
+    # Using no heuristic function will fallback to using djikstra.
+    #
+    # The result of the search method will return an array of x,y coordinates that 
+    # lead to the goal.
+    #
+    # For now, the cost parameter has no effect and will always be set to 1.
 
     def __init__(self, grid, openCell, heuristic=None, cost=1):
+        # Initializes the pathfinder with a map and heuristic function.
+        # 
+        # The open cell is a byte in decimal between 0-255. This represents 
+        # cells that can be visited. Everything is else is considered a wall or
+        # obstacle.
+        #
+        # The grid is a numpy array that represents a map that is broken up into
+        # discrete cells. For instance, each 20x20 block in the regular map 
+        # would be equal to a 1x1 pixel in the grid.
+
         self.grid = grid
         self.openCell = openCell
-        self.heuristic = heuristic if heuristic is not None else self.noHeuristic
+        self.heuristic = heuristic or self.noHeuristic
         self.delta = [[-1, 0], [0, -1], [1, 0], [0, 1]]
-        self.cost = cost     
+        self.cost = 1     
 
     def search(self, start, goal):
+        # Search for a path from start to goal.
+        # Start and goal are valid x,y coordinates on the given map.
+        #
+        # The map and heuristic are given at initialization.
+        #
+        # If no path is found, this method will return False. If one is found, 
+        # then array of x,y coordinates will be returned.
+
         gridY, gridX = self.grid.shape        
         closed = np.zeros(self.grid.shape, bool)
         expand = np.empty(self.grid.shape)
@@ -97,6 +132,9 @@ class PathFinder:
         return path
 
     def noHeuristic(self, x, y, goalX, goalY):
+        # Dummy heuristic function for the case 
+        # where no heuristic is given.
+        
         return 0
 
 
@@ -110,15 +148,11 @@ def main():
     start = [int(num) for num in config.get('map', 'start').split(',')]
     goal = [int(num) for num in config.get('map', 'goal').split(',')]
 
-    # pathfinder = PathFinder(grid, openByte, euclideanDistance)
-    # path = pathfinder.search(start, goal)
-    # print path
+    pathfinder = PathFinder(grid, openByte, euclideanDistance)
 
-    client = BetelBotClient('', config.getint('server', 'port'))    
-    def onServiceRequested(id, method, *params):
-        print "HANDLING REQUEST"
-        client.response(id, "SUCCESS")    
-    client.service('pathfinder', onServiceRequested)
+    client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
+    conn = client.connect()
+
     IOLoop.instance().start()
 
 
