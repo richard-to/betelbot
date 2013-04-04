@@ -97,7 +97,7 @@ class BetelbotClientConnection(JsonRpcConnection):
         # The callback will return True if found and False if not. In the case
         # that the service has been located, the callback is called immediately.
 
-        if !self.hasService(method):
+        if self.hasService(method) is False:
             id = self.idincrement.id()
             self.responseHandlers[id] = lambda msg: self.handleLocateResponse(callback, method, msg)
             self.write(self.encoder.request(id, BetelbotMethod.LOCATE, method))
@@ -132,7 +132,7 @@ class BetelbotClientConnection(JsonRpcConnection):
 
     def hasService(self, method):
         # Helper method to test if a 
-        #
+        
         return hasattr(self.__class__, method) and callable(getattr(self.__class__, method))
     
     def addService(self, method, client):
@@ -141,24 +141,11 @@ class BetelbotClientConnection(JsonRpcConnection):
 
         def request(self, callback, *params):
             conn = client.connect()
-            conn.request(lambda result: self.handleServiceResponse(callback, method, result), method, *params) 
+            conn.request(callback, method, *params) 
 
         request.__name__ = method
         setattr(self.__class__, request.__name__, request)
-        self.logInfo('Adding service "{}"'.format(method))
-
-    def handleServiceResponse(self, callback, method, result):
-        # This method intercepts callbacks to service requests and does some 
-        # preprocessing before invoking the user callback.
-        #
-        # Current this method only does some logging.
-        # 
-        # It also never invokes the callback if the result is None. Not the 
-        # best behavior...
-        
-        if result is not None:
-            callback(result)
-            self.logInfo('Received response from service "{}"'.format(method))            
+        self.logInfo('Adding service "{}"'.format(method))           
 
 
 def main():
