@@ -181,11 +181,12 @@ class PathfinderConnection(JsonRpcConnection):
     def handleSearch(self, msg):
         # Handles "search" operation.
 
-        self.logInfo('Handling Search')
         id = msg.get(jsonrpc.Key.ID, None)
         params = msg.get(jsonrpc.Key.PARAMS, None)
         if id and len(params) == 2:
             start, goal = params
+            placeholders = start + goal            
+            self.logInfo('Searching for path from ({0},{1}) to ({2},{3})..'.format(*placeholders))
             path = self.pathfinder.search(start, goal)
             self.write(self.encoder.response(id, path))
 

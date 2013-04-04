@@ -162,7 +162,7 @@ class Connection(object):
 
     def write(self, msg):
         # Sends msg to the server.
-
+        self.logInfo('Sending message')
         self.stream.write("{}{}".format(msg, self.terminator), self.onWrite)
 
     def read(self):
@@ -170,11 +170,13 @@ class Connection(object):
         # terminator character.
 
         if not self.stream.reading():
+            self.logInfo('Listening for messages')
             self.stream.read_until(self.terminator, self.onRead)
 
     def close(self):
         # Disconnects client from server.
         if self.stream:
+            self.logInfo('Client quit')
             self.stream.close()  
 
     def logInfo(self, msg):

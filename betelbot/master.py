@@ -98,6 +98,7 @@ class BetelbotConnection(JsonRpcConnection):
             data = params[1:]
             topicObj = self.topics.get(topic, None)        
             if topicObj and topicObj.isValid(*data):
+                self.logInfo('Publishing to topic "{}"'.format(topic))
                 subscribers = self.topicSubscribers[topic]
                 msg = self.encoder.notification(BetelbotMethod.NOTIFYSUB, topic, *data)
                 for subscriber in subscribers:
@@ -155,14 +156,12 @@ class BetelbotConnection(JsonRpcConnection):
                 pass    
 
     def onWrite(self):
-        self.logInfo('Sending message')
         self.read()
  
     def onClose(self):
         # When a stream closes its connection, its subscriptions need 
         # to be removed.
 
-        self.logInfo('Client quit')
         for topic in self.topicSubscribers:
             if self in self.topicSubscribers[topic]:
                 self.logInfo('Unsubscribing client from topic "{}"'.format(topic))        

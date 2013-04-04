@@ -226,6 +226,7 @@ class ClientConnection(JsonRpcConnection):
     def notification(self, method, *params):
         # Sends a notification to server and closes connection.
 
+        self.logInfo('Sending notification "{}"'.format(method))
         self.write(self.encoder.notification(method, *params))
         self.close() 
 
@@ -233,6 +234,7 @@ class ClientConnection(JsonRpcConnection):
         # Sends a request. This method is nonblocking, so a callback 
         # is necessary to handle the eventual response.
 
+        self.logInfo('Sending request "{}"'.format(method))
         self.responseHandlers[id] = callback
         self.write(self.encoder.request(id, method, *params))
 
