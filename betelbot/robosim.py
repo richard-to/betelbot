@@ -7,29 +7,24 @@ import signal
 
 from tornado.ioloop import IOLoop
 
-from map import simple_world
-from topic import cmdTopic, moveTopic, senseTopic
-from util import BetelBotClient, signalHandler
+from client import BetelbotClientConnection
+from topic.default import CmdTopic, MoveTopic
+from util import Client, signalHandler
 
 
-class RoboSim:
+class RoboSim(object):
 
-    def __init__(self, client, world):
-        self.client = client
-        self.world = world
-        self.real_location = random.randint(0, len(world) - 1)
-        self.client.subscribe(cmdTopic.id, self.onCmdPublished)
+    def __init__(self, conn):
+        self.cmdTopic = CmdTopic()
+        self.moveTopic = MoveTopic()
+        self.conn = conn
+        self.conn.subscribe(self.cmdTopic.id, self.onCmdPublished)
 
     def move(self, direction):
-        self.client.publish(moveTopic.id, direction)
-
-    def sense(self):
-        self.client.publish(senseTopic.id, self.world[self.real_location])
+        self.conn.publish(self.moveTopic.id, direction)
 
     def onCmdPublished(self, topic, data=None):
-        self.real_location = (self.real_location + 1) % len(self.world)
-        self.move(moveTopic.dataType[2])
-        self.sense()
+        self.move(data[0])
 
 
 def main():
@@ -38,8 +33,13 @@ def main():
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
 
-    client = BetelBotClient('', config.getint('server', 'port'))
-    roboSim = RoboSim(client, simple_world)
+    logger = logging.getLogger('')
+    logger.setLevel(config.get('general', 'log_level'))
+    
+    client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
+    conn = client.connect()
+
+    roboSim = RoboSim(conn)
     IOLoop.instance().start()
 
 
