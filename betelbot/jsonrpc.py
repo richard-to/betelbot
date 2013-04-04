@@ -168,6 +168,7 @@ class JsonRpcServer(TCPServer):
         TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options)
         self.connection = kwargs.pop('connection', JsonRpcConnection)
         self.encoder = kwargs.pop('encoder', Encoder())
+        self.idincrement = kwargs.pop('idincrement', IdIncrement())        
         self.data = {}
         self.onInit(**kwargs)
 
@@ -178,7 +179,8 @@ class JsonRpcServer(TCPServer):
         self.data = kwargs
 
     def handle_stream(self, stream, address):
-        self.connection(stream, address, encoder=self.encoder, **self.data)
+        self.connection(stream, address, encoder=self.encoder, 
+            idincrement=self.idincrement, **self.data)
 
 
 class JsonRpcConnection(Connection):
@@ -190,6 +192,7 @@ class JsonRpcConnection(Connection):
 
     def __init__(self, stream, address, terminator='\0', **kwargs):
         self.encoder = kwargs.pop('encoder', Encoder())
+        self.idincrement = kwargs.pop('idincrement', IdIncrement())
         self.methodHandlers = {}
         self.responseHandlers = {}
 
@@ -226,17 +229,24 @@ class ClientConnection(JsonRpcConnection):
     def notification(self, method, *params):
         # Sends a notification to server and closes connection.
 
-        self.logInfo('Sending notification "{}"'.format(method))
         self.write(self.encoder.notification(method, *params))
         self.close() 
+        self.logInfo('Sending notification "{}"'.format(method))
 
-    def request(self, callback, id, method, *params):
+    def request(self, callback, method, *params):
         # Sends a request. This method is nonblocking, so a callback 
         # is necessary to handle the eventual response.
 
+        id = self.idincrement.id()        
+        self.responseHandlers[id] = lambda msg: self.handleResponse(msg, method, callback)
+        self.write(self.encoder.request(id, method, *params)) 
         self.logInfo('Sending request "{}"'.format(method))
-        self.responseHandlers[id] = callback
-        self.write(self.encoder.request(id, method, *params))
+
+    def handleResponse(self, msg, method, callback):
+        id = msg.get(Key.ID, None)
+        result = msg.get(Key.RESULT, None)
+        if result:
+            callback(result)
 
     def onRead(self, data):
         # Handles response from server by calling specified 
