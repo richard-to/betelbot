@@ -68,22 +68,25 @@ class BetelbotClientConnection(JsonRpcConnection):
         self.logInfo('Registering service "{}"'.format(method))     
         self.write(self.encoder.notification(BetelbotMethod.REGISTER, method, port, host))
 
-    def locate(self, id, method):
+    def locate(self, id, method, callback=None):
         # Locate the address of a service
 
         if method not in self.serviceHandlers:
             self.logInfo('Locating to service "{}"'.format(method))
-            self.responseHandlers[id] = lambda msg: self.handleLocate(method, msg)
+            self.responseHandlers[id] = lambda msg: self.handleLocate(method, msg, callback)
             self.write(self.encoder.request(id, BetelbotMethod.LOCATE, method))
         else:
             self.logInfo('Service "{}" already located'.format(method))
 
-    def handleLocate(self, method, msg):
+    def handleLocate(self, method, msg, callback):
         result = msg.get(jsonrpc.Key.RESULT, None)
         if result and len(result) == 2:
             port, host = result
             client = Client(host, port, jsonrpc.ClientConnection)
             self.addService(method, client)
+            callback(True)
+        else:
+            callback(False)
      
     def handleNotifySub(self, msg):
         # Handles subscription notifcation.
@@ -132,6 +135,6 @@ class BetelbotClientConnection(JsonRpcConnection):
 def main():
     pass
 
-    
+
 if __name__ == '__main__':
     main()
