@@ -13,6 +13,9 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
+import jsonrpc
+
+from jsonrpc import JsonRpcServer, JsonRpcConnection
 from client import BetelbotClientConnection
 from util import Client, signalHandler
 
@@ -28,7 +31,7 @@ def euclideanDistance(x, y, goalX, goalY):
     return xDist * xDist + yDist * yDist
 
 
-class PathFinder:
+class Pathfinder:
     # Searches for the shortest path given a discrete map.
     #
     # The map is a 2-d numpy array with x-cols and y-rows.
@@ -138,6 +141,55 @@ class PathFinder:
         return 0
 
 
+class PathfinderMethod:
+    # Methods supported by Pathfinder server
+
+    # - Type: Request
+    # - Method: search
+    # - Params: start[x,y], goal[x,y]
+    # - Response: array of [x,y] coordinates    
+    SEARCH = 'search'
+
+
+class PathfinderServer(JsonRpcServer):
+    # Pathfinder server is a service that finds a path from two points.
+    #
+    # Currently a specific map cannot be chosen, only what is loaded by the 
+    # server on start up.
+    #
+    # Supported operations:
+    #
+    # - search(xStart, yStart, xGoal, yGoal): array of (x,y) coordinates
+
+    def onInit(self, **kwargs):
+        logging.info('Pathfinder Server is running')
+        self.data['pathfinder'] = kwargs['pathfinder']
+
+
+class PathfinderConnection(JsonRpcConnection):
+
+    def onInit(self, **kwargs):
+        self.logInfo('Received a new connection')
+        
+        self.pathfinder = kwargs['pathfinder']
+
+        self.methodHandlers = {
+            PathfinderMethod.SEARCH: self.handleSearch,
+        }
+        self.read()
+
+    def handleSearch(self, msg):
+        # Handles "search" operation.
+
+        self.logInfo('Handling Search')
+        id = msg.get(jsonrpc.Key.ID, None)
+        params = msg.get(jsonrpc.Key.PARAMS, None)
+        if id and len(params) == 2:
+            start, goal = params
+            path = self.pathfinder.search(start, goal)
+            self.write(self.encoder.response(id, path))
+
+
 def main():
     signal.signal(signal.SIGINT, signalHandler)
 
@@ -148,10 +200,18 @@ def main():
     start = [int(num) for num in config.get('map', 'start').split(',')]
     goal = [int(num) for num in config.get('map', 'goal').split(',')]
 
-    pathfinder = PathFinder(grid, openByte, euclideanDistance)
+    logger = logging.getLogger('')
+    logger.setLevel(config.get('general', 'log_level'))
+ 
+    pathfinder = Pathfinder(grid, openByte, euclideanDistance)
+
+    serverPort = config.getint('pathfinder', 'port')
+    server = PathfinderServer(connection=PathfinderConnection, pathfinder=pathfinder)
+    server.listen(serverPort)
 
     client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
     conn = client.connect()
+    conn.register(PathfinderMethod.SEARCH, serverPort)
 
     IOLoop.instance().start()
 
