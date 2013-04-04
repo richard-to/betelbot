@@ -1,6 +1,7 @@
 import abc
 import fcntl
 import inspect
+import logging
 import os
 import os.path
 import pkgutil
@@ -11,6 +12,8 @@ import sys
 import termios
 import time
 import tty
+
+from datetime import datetime
 
 from tornado.iostream import IOStream
 from tornado.ioloop import IOLoop
@@ -174,6 +177,9 @@ class Connection(object):
         if self.stream:
             self.stream.close()  
 
+    def logInfo(self, msg):
+        dt = datetime.now().strftime("%m-%d-%y %H:%M")
+        logging.info('[%s, %s]%s', self.address[0], dt, msg)   
 
 
 class NonBlockingTerm:
