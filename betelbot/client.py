@@ -6,7 +6,7 @@ from tornado.iostream import IOStream
 
 import jsonrpc
 
-from jsonrpc import JsonRpcConnection
+from jsonrpc import JsonRpcConnection, JsonRpcConnection
 from master import BetelbotMethod
 from util import Client
 
@@ -29,6 +29,7 @@ class BetelbotClientConnection(JsonRpcConnection):
     
     def onInit(self, **kwargs):
         self.subscriptionHandlers = {}
+        self.serviceHandlers = {}
         self.methodHandlers = {
             BetelbotMethod.NOTIFYSUB: self.handleNotifySub
         }
@@ -52,7 +53,7 @@ class BetelbotClientConnection(JsonRpcConnection):
         self.subscriptionHandlers[topic].append(callback)
         self.write(self.encoder.notification(BetelbotMethod.SUBSCRIBE, topic))
 
-    def register(self, method, host, port):
+    def register(self, method, port, host=''):
         # Registers a service with the server. Information needed is method name,
         # host and port for the servicee.
         #
@@ -61,14 +62,21 @@ class BetelbotClientConnection(JsonRpcConnection):
         # Multiple services can be registered by the server by registering
         # a method at a time.
      
-        self.write(self.encoder.notification(BetelbotMethod.REGISTER, method, host, port))
+        self.write(self.encoder.notification(BetelbotMethod.REGISTER, method, port, host))
 
-    def locate(self, id, method, callback=None):
+    def locate(self, id, method):
         # Locate the address of a service
 
-        self.responseHandlers[id] = callback
+        self.responseHandlers[id] = lambda msg: self.handleLocate(method, msg)
         self.write(self.encoder.request(id, BetelbotMethod.LOCATE, method))
 
+    def handleLocate(self, method, msg):
+        result = msg.get(jsonrpc.Key.RESULT, None)
+        if result and len(result) == 2:
+            port, host = result
+            client = Client(host, port, jsonrpc.ClientConnection)
+            self.addService(method, client)
+     
     def handleNotifySub(self, msg):
         # Handles subscription notifcation.
         #
@@ -86,6 +94,31 @@ class BetelbotClientConnection(JsonRpcConnection):
             if topic in self.subscriptionHandlers:
                 for subscriber in self.subscriptionHandlers[topic]:
                     subscriber(topic, data)
+
+    def hasService(self, method):
+        return hasattr(self.__class__, method) and callable(getattr(self.__class__, method))
+    
+    def addService(self, methodName, client):
+        print "Service added"
+
+        def request(self, callback, id, *params):
+            conn = client.connect()
+            self.serviceHandlers[id] = (conn, methodName, callback)
+            conn.request(self.handleServiceResponse, id, methodName, *params) 
+
+        request.__name__ = methodName
+        setattr(self.__class__, request.__name__, request)
+
+    def handleServiceResponse(self, msg):
+        id = msg.get(jsonrpc.Key.ID, None)
+        result = msg.get(jsonrpc.Key.RESULT, None)
+
+        if id and result:
+            conn, method, callback = self.serviceHandlers[id]
+            callback(id, method, result)
+            conn.close()
+            del self.serviceHandlers[id]
+
 
 
 if __name__ == '__main__':
