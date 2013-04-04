@@ -60,20 +60,17 @@ class BetelbotServer(JsonRpcServer):
     # - Locates address of registered service methods for clients
 
     def onInit(self, **kwargs):
-        logging.info('BetelBot Server is running')
-
         topics = kwargs.get('topics', getTopics())
         self.data['topics'] = topics
         self.data['topicSubscribers'] = dict((key,[]) for key in topics.keys())
         self.data['services'] = {}
+        logging.info('BetelBot Server is running')        
 
 
 class BetelbotConnection(JsonRpcConnection):
     # BetelbotConnection is created when a client connects to the Betelbot server.
 
-    def onInit(self, **kwargs):
-        self.logInfo('Received a new connection')
-        
+    def onInit(self, **kwargs):        
         self.topics = kwargs.get('topics', [])
         self.topicSubscribers = kwargs.get('topicSubscribers', {})
         self.services = kwargs.get('services', {})
@@ -85,6 +82,7 @@ class BetelbotConnection(JsonRpcConnection):
             BetelbotMethod.LOCATE: self.handleLocate
         }
         self.read()
+        self.logInfo('Received a new connection')        
 
     def handlePublish(self, msg):
         # Handles "publish" operation.
@@ -98,11 +96,11 @@ class BetelbotConnection(JsonRpcConnection):
             data = params[1:]
             topicObj = self.topics.get(topic, None)        
             if topicObj and topicObj.isValid(*data):
-                self.logInfo('Publishing to topic "{}"'.format(topic))
                 subscribers = self.topicSubscribers[topic]
                 msg = self.encoder.notification(BetelbotMethod.NOTIFYSUB, topic, *data)
                 for subscriber in subscribers:
                     subscriber.write(msg)
+                self.logInfo('Publishing to topic "{}"'.format(topic))                    
 
     def handleSubscribe(self, msg):
         # Handles "subscribe" operation.
@@ -114,8 +112,8 @@ class BetelbotConnection(JsonRpcConnection):
         if len(params) == 1:
             topic = params[0]  
             if topic in self.topicSubscribers:
-                self.logInfo('Subscribing to topic "{}"'.format(topic))
                 self.topicSubscribers[topic].append(self)
+                self.logInfo('Subscribing to topic "{}"'.format(topic))                
 
     def handleRegister(self, msg):
         # Handles "register" operation
@@ -127,9 +125,9 @@ class BetelbotConnection(JsonRpcConnection):
 
         params = msg.get(jsonrpc.Key.PARAMS, None)
         if len(params) == 3:
-            method, port, host = params            
-            self.logInfo('Registering service "{}"'.format(method))            
+            method, port, host = params                       
             self.services[method] = (port, host)
+            self.logInfo('Registering service "{}"'.format(method))             
 
     def handleLocate(self, msg):
         # Handles "locate" operation
@@ -147,13 +145,13 @@ class BetelbotConnection(JsonRpcConnection):
             pass
         else:
             method = params[0]            
-            self.logInfo('Locating service "{}"'.format(method))
             if method in self.services:          
                 port, host = self.services[method]
                 self.write(self.encoder.response(id, port, host))
             else:
                 # Send invalid request
                 pass    
+            self.logInfo('Locating service "{}"'.format(method))
 
     def onWrite(self):
         self.read()
@@ -163,9 +161,9 @@ class BetelbotConnection(JsonRpcConnection):
         # to be removed.
 
         for topic in self.topicSubscribers:
-            if self in self.topicSubscribers[topic]:
-                self.logInfo('Unsubscribing client from topic "{}"'.format(topic))        
+            if self in self.topicSubscribers[topic]:      
                 self.topicSubscribers[topic].remove(self)
+                self.logInfo('Unsubscribing client from topic "{}"'.format(topic))                  
 
 
 def main():
