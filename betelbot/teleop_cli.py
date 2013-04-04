@@ -6,9 +6,11 @@ import threading
 
 from tornado.ioloop import IOLoop
 
+import jsonrpc
+
+from client import BetelbotClientConnection
 from topic.default import CmdTopic
 from util import NonBlockingTerm, Client
-from client import BetelbotClientConnection
 
 
 def threadedLoop():
