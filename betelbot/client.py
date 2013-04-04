@@ -28,8 +28,12 @@ class BetelbotClientConnection(JsonRpcConnection):
     # in jsonrpc module.
     
     def onInit(self, **kwargs):
+        # For the BetelbotClientConnections, a few handlers need to be initialized.
+        #
+        # - subscription handlers are manage subscriber callbacks
+        # - method handlers currently only handle the NotifySub method
+
         self.subscriptionHandlers = {}
-        self.serviceHandlers = {}
         self.methodHandlers = {
             BetelbotMethod.NOTIFYSUB: self.handleNotifySub
         }
@@ -56,40 +60,6 @@ class BetelbotClientConnection(JsonRpcConnection):
         self.write(self.encoder.notification(BetelbotMethod.SUBSCRIBE, topic))
         self.logInfo('Subscribing to topic "{}"'.format(topic)) 
 
-    def register(self, method, port, host=''):
-        # Registers a service with the server. Information needed is method name,
-        # host and port for the servicee.
-        #
-        # Currently services are just methods rather than a set of methods.
-        #
-        # Multiple services can be registered by the server by registering
-        # a method at a time.
-          
-        self.write(self.encoder.notification(BetelbotMethod.REGISTER, method, port, host))
-        self.logInfo('Registering service "{}"'.format(method))
-
-    def locate(self, callback, method):
-        # Locate the address of a service
-
-        if method not in self.serviceHandlers:
-            id = self.idIncrement()
-            self.responseHandlers[id] = lambda msg: self.handleLocate(method, msg, callback)
-            self.write(self.encoder.request(id, BetelbotMethod.LOCATE, method))
-            self.logInfo('Locating to service "{}"'.format(method))
-        else:
-            callback(True)
-            self.logInfo('Service "{}" already located'.format(method))
-
-    def handleLocate(self, method, msg, callback):
-        result = msg.get(jsonrpc.Key.RESULT, None)
-        if result and len(result) == 2:
-            port, host = result
-            client = Client(host, port, jsonrpc.ClientConnection)
-            self.addService(method, client)
-            callback(True)
-        else:
-            callback(False)
-     
     def handleNotifySub(self, msg):
         # Handles subscription notifcation.
         #
@@ -109,28 +79,85 @@ class BetelbotClientConnection(JsonRpcConnection):
                     subscriber(topic, data)
             self.logInfo('Received subscription notification for "{}"'.format(topic))  
 
+    def register(self, method, port, host=''):
+        # Registers a service with the server. Information needed is method name,
+        # host and port for the servicee.
+        #
+        # Currently services are just methods rather than a set of methods.
+        #
+        # Multiple services can be registered by the server by registering
+        # a method at a time.
+          
+        self.write(self.encoder.notification(BetelbotMethod.REGISTER, method, port, host))
+        self.logInfo('Registering service "{}"'.format(method))
+
+    def locate(self, callback, method):
+        # Locates the address of a service if it does not exist
+        #
+        # The callback will return True if found and False if not. In the case
+        # that the service has been located, the callback is called immediately.
+
+        if !self.hasService(method):
+            id = self.idincrement.id()
+            self.responseHandlers[id] = lambda msg: self.handleLocateResponse(callback, method, msg)
+            self.write(self.encoder.request(id, BetelbotMethod.LOCATE, method))
+            self.logInfo('Locating to service "{}"'.format(method))
+        else:
+            callback(True)
+            self.logInfo('Service "{}" already located'.format(method))
+
+    def handleLocateResponse(self, callback, method, msg):
+        # When the locate method receives a response, this callback will be
+        # invoked so that we can add the service to the client.
+        #
+        # Services are individual clients that create their own connections.
+        # These connections send a request and then close the connection once a 
+        # response is received.
+        #
+        # Service methods are dynamically added to BetelbotClientConnection 
+        # and can be called like a regular method.
+        #
+        # Example: conn.search(callback, [1,2], [2,3])
+        #
+        # Afterwards the user callback will be invoked with True/False.
+
+        result = msg.get(jsonrpc.Key.RESULT, None)
+        if result and len(result) == 2:
+            port, host = result
+            client = Client(host, port, jsonrpc.ClientConnection)
+            self.addService(method, client)
+            callback(True)
+        else:
+            callback(False)
+
     def hasService(self, method):
+        # Helper method to test if a 
+        #
         return hasattr(self.__class__, method) and callable(getattr(self.__class__, method))
     
-    def addService(self, methodName, client):
+    def addService(self, method, client):
+        # A service is dynamically added to BetelbotClientConnection, so
+        # the method can be called naturally.
+
         def request(self, callback, *params):
-            id = self.idIncrement.id()
             conn = client.connect()
-            self.serviceHandlers[id] = (conn, methodName, callback)
-            conn.request(self.handleServiceResponse, id, methodName, *params) 
+            conn.request(lambda result: self.handleServiceResponse(callback, method, result), method, *params) 
 
-        request.__name__ = methodName
+        request.__name__ = method
         setattr(self.__class__, request.__name__, request)
-        self.logInfo('Adding service "{}"'.format(methodName))
+        self.logInfo('Adding service "{}"'.format(method))
 
-    def handleServiceResponse(self, msg):
-        id = msg.get(jsonrpc.Key.ID, None)
-        result = msg.get(jsonrpc.Key.RESULT, None)
-
-        if id and id in self.serviceHandlers and result:
-            conn, method, callback = self.serviceHandlers[id]
-            callback(id, method, result)
-            del self.serviceHandlers[id]
+    def handleServiceResponse(self, callback, method, result):
+        # This method intercepts callbacks to service requests and does some 
+        # preprocessing before invoking the user callback.
+        #
+        # Current this method only does some logging.
+        # 
+        # It also never invokes the callback if the result is None. Not the 
+        # best behavior...
+        
+        if result is not None:
+            callback(result)
             self.logInfo('Received response from service "{}"'.format(method))            
 
 
