@@ -70,7 +70,13 @@ class BetelbotServer(JsonRpcServer):
 class BetelbotConnection(JsonRpcConnection):
     # BetelbotConnection is created when a client connects to the Betelbot server.
 
-    def onInit(self, **kwargs):        
+    def onInit(self, **kwargs):
+        # Initializes BetelbotConnection with method handlers for 
+        # publish, subscribe, register, locate
+        #
+        # Adds dictionaries for registered topics and services.
+
+        self.logInfo('Received a new connection')        
         self.topics = kwargs.get('topics', [])
         self.topicSubscribers = kwargs.get('topicSubscribers', {})
         self.services = kwargs.get('services', {})
@@ -81,8 +87,7 @@ class BetelbotConnection(JsonRpcConnection):
             BetelbotMethod.REGISTER: self.handleRegister,
             BetelbotMethod.LOCATE: self.handleLocate
         }
-        self.read()
-        self.logInfo('Received a new connection')        
+        self.read()       
 
     def handlePublish(self, msg):
         # Handles "publish" operation.
@@ -96,11 +101,11 @@ class BetelbotConnection(JsonRpcConnection):
             data = params[1:]
             topicObj = self.topics.get(topic, None)        
             if topicObj and topicObj.isValid(*data):
+                self.logInfo('Publishing to topic "{}"'.format(topic))                
                 subscribers = self.topicSubscribers[topic]
                 msg = self.encoder.notification(BetelbotMethod.NOTIFYSUB, topic, *data)
                 for subscriber in subscribers:
-                    subscriber.write(msg)
-                self.logInfo('Publishing to topic "{}"'.format(topic))                    
+                    subscriber.write(msg)                  
 
     def handleSubscribe(self, msg):
         # Handles "subscribe" operation.
@@ -112,8 +117,8 @@ class BetelbotConnection(JsonRpcConnection):
         if len(params) == 1:
             topic = params[0]  
             if topic in self.topicSubscribers:
-                self.topicSubscribers[topic].append(self)
                 self.logInfo('Subscribing to topic "{}"'.format(topic))                
+                self.topicSubscribers[topic].append(self)                
 
     def handleRegister(self, msg):
         # Handles "register" operation
@@ -125,15 +130,17 @@ class BetelbotConnection(JsonRpcConnection):
 
         params = msg.get(jsonrpc.Key.PARAMS, None)
         if len(params) == 3:
-            method, port, host = params                       
-            self.services[method] = (port, host)
-            self.logInfo('Registering service "{}"'.format(method))             
+            method, port, host = params
+            self.logInfo('Registering service "{}"'.format(method))                                   
+            self.services[method] = (port, host)         
 
     def handleLocate(self, msg):
         # Handles "locate" operation
         #
         # The locate operation returns the address of service
         
+        self.logInfo('Locating service "{}"'.format(method))
+
         id = msg.get(jsonrpc.Key.ID, None)
         params = msg.get(jsonrpc.Key.PARAMS, None)
         
@@ -151,9 +158,11 @@ class BetelbotConnection(JsonRpcConnection):
             else:
                 # Send invalid request
                 pass    
-            self.logInfo('Locating service "{}"'.format(method))
 
     def onWrite(self):
+        # After writing completes, need to make sure we start reading again.
+        # Calls the read method to make sure.
+
         self.read()
  
     def onClose(self):
@@ -161,9 +170,9 @@ class BetelbotConnection(JsonRpcConnection):
         # to be removed.
 
         for topic in self.topicSubscribers:
-            if self in self.topicSubscribers[topic]:      
-                self.topicSubscribers[topic].remove(self)
+            if self in self.topicSubscribers[topic]:
                 self.logInfo('Unsubscribing client from topic "{}"'.format(topic))                  
+                self.topicSubscribers[topic].remove(self)                 
 
 
 def main():
