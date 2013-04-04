@@ -206,6 +206,13 @@ class JsonRpcConnection(Connection):
         self.read()
 
     def readHandler(self, data):
+        # Generic way to handle notifications, requests, and responses to the server/client.
+        # 
+        # This allows the dictionary of handler methods to be set in the onInit method.
+        #
+        # - methodHandlers handle notifications/requests
+        # - responseHandlers handle responses
+        
         msg = json.loads(data.strip(self.terminator))
         id = msg.get(Key.ID, None)
         method = msg.get(Key.METHOD, None)
@@ -229,31 +236,41 @@ class ClientConnection(JsonRpcConnection):
     def notification(self, method, *params):
         # Sends a notification to server and closes connection.
 
+        self.logInfo('Sending "{}" notification'.format(method))
         self.write(self.encoder.notification(method, *params))
         self.close() 
-        self.logInfo('Sending notification "{}"'.format(method))
 
     def request(self, callback, method, *params):
         # Sends a request. This method is nonblocking, so a callback 
         # is necessary to handle the eventual response.
+        #
+        # Only one request can be made per connection in this class.
+        # If another request needs to be made, create a new connection.
 
-        id = self.idincrement.id()        
-        self.responseHandlers[id] = lambda msg: self.handleResponse(msg, method, callback)
-        self.write(self.encoder.request(id, method, *params)) 
-        self.logInfo('Sending request "{}"'.format(method))
+        if self.responseHandlers:
+            self.logInfo('Only 1 request can be sent per connection')
+        else:
+            self.logInfo('Sending "{}" request'.format(method))            
+            id = self.idincrement.id()        
+            self.responseHandlers[id] = lambda msg: self.handleResponse(msg, method, callback)
+            self.write(self.encoder.request(id, method, *params)) 
 
     def handleResponse(self, msg, method, callback):
-        id = msg.get(Key.ID, None)
+        # Handles responses. Also need to close connection in 
+        # the case of long running callbacks. This will prevent 
+        # the connection from being closed immediately.
+        
+        self.logInfo('Received "{}" response'.format(method))
+        self.close()
         result = msg.get(Key.RESULT, None)
-        if result:
+        if result is not None:       
             callback(result)
 
     def onRead(self, data):
         # Handles response from server by calling specified 
-        # callback and closing connection.
+        # callback
 
         self.readHandler(data)
-        self.close()
 
 
 def main():
