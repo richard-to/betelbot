@@ -162,22 +162,22 @@ class Connection(object):
 
     def write(self, msg):
         # Sends msg to the server.
-        self.logInfo('Sending message')
         self.stream.write("{}{}".format(msg, self.terminator), self.onWrite)
+        self.logInfo('Sending message')
 
     def read(self):
         # Reads data from the stream until encounters the specified 
         # terminator character.
 
         if not self.stream.reading():
-            self.logInfo('Listening for messages')
             self.stream.read_until(self.terminator, self.onRead)
+            self.logInfo('Listening for messages')            
 
     def close(self):
         # Disconnects client from server.
         if self.stream:
-            self.logInfo('Client quit')
-            self.stream.close()  
+            self.stream.close()
+            self.logInfo('Client quit')            
 
     def logInfo(self, msg):
         dt = datetime.now().strftime("%m-%d-%y %H:%M")
