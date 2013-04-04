@@ -199,6 +199,10 @@ class JsonRpcConnection(Connection):
         # When data is received parse json message and call 
         # corresponding method handler.
         
+        self.readHandler(data)
+        self.read()
+
+    def readHandler(self, data):
         msg = json.loads(data.strip(self.terminator))
         id = msg.get(Key.ID, None)
         method = msg.get(Key.METHOD, None)
@@ -207,10 +211,8 @@ class JsonRpcConnection(Connection):
             self.methodHandlers[method](msg)   
         elif id in self.responseHandlers:
             self.responseHandlers[id](msg)
-            del self.responseHandlers[id]
+            del self.responseHandlers[id]        
 
-        self.read()
-                    
 
 class ClientConnection(JsonRpcConnection):
     # Extends Connection class to handle a JSON-RPC notification or request.
@@ -238,7 +240,7 @@ class ClientConnection(JsonRpcConnection):
         # Handles response from server by calling specified 
         # callback and closing connection.
 
-        super(ClientConnection, self).onRead(data)
+        self.readHandler(data)
         self.close()
 
 
