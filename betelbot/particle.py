@@ -13,9 +13,8 @@ import numpy as np
 
 from tornado.ioloop import IOLoop
 
-from map import simple_world
-from topic import histogramTopic, moveTopic, senseTopic
-from util import BetelBotClient, signalHandler
+from client import BetelbotClientConnection
+from util import Client, signalHandler
 
 class Particle:
 
