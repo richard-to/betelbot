@@ -24,16 +24,16 @@ class RoboSim(object):
         self.moveTopic = MoveTopic()
         self.conn = conn
         self.conn.subscribe(self.cmdTopic.id, self.onCmdPublished)
-        self.conn.locate(1, PathfinderMethod.SEARCH, self.onLocateResponse)
+        self.conn.locate(self.onLocateResponse, PathfinderMethod.SEARCH)
 
     def move(self, direction):
         self.conn.publish(self.moveTopic.id, direction)
 
     def onLocateResponse(self, found=False):
         if found:
-            self.conn.search(self.onSearchResponse, 1, self.start, self.goal)
+            self.conn.search(self.onSearchResponse, self.start, self.goal)
 
-    def onSearchResponse(self, id, method, result):
+    def onSearchResponse(self, result):
         delta = {
             'k': [-1, 0], 
             'h': [0, -1], 
