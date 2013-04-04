@@ -126,9 +126,9 @@ class BetelbotConnection(JsonRpcConnection):
 
         params = msg.get(jsonrpc.Key.PARAMS, None)
         if len(params) == 3:
-            method, host, port = params            
+            method, port, host = params            
             self.logInfo('Registering service "{}"'.format(method))            
-            self.services[method] = (host, port)
+            self.services[method] = (port, host)
 
     def handleLocate(self, msg):
         # Handles "locate" operation
@@ -148,8 +148,8 @@ class BetelbotConnection(JsonRpcConnection):
             method = params[0]            
             self.logInfo('Locating service "{}"'.format(method))
             if method in self.services:          
-                host, port = self.services[method]
-                self.write(self.encoder.response(id, host, port))
+                port, host = self.services[method]
+                self.write(self.encoder.response(id, port, host))
             else:
                 # Send invalid request
                 pass    
@@ -167,10 +167,6 @@ class BetelbotConnection(JsonRpcConnection):
             if self in self.topicSubscribers[topic]:
                 self.logInfo('Unsubscribing client from topic "{}"'.format(topic))        
                 self.topicSubscribers[topic].remove(self)
-
-    def logInfo(self, msg):
-        dt = datetime.now().strftime("%m-%d-%y %H:%M")
-        logging.info('[%s, %s]%s', self.address[0], dt, msg)
 
 
 def main():
