@@ -33,19 +33,19 @@ class BetelbotClientConnection(JsonRpcConnection):
         # - subscription handlers are manage subscriber callbacks
         # - method handlers currently only handle the NotifySub method
 
+        self.logInfo('Client connected')
         self.subscriptionHandlers = {}
         self.methodHandlers = {
             BetelbotMethod.NOTIFYSUB: self.handleNotifySub
-        }
-        self.logInfo('Client connected')        
+        }        
 
     def publish(self, topic, *params):
         # Sends a "publish" notification to the server.
         #
         # Params are the data to be published to subscribers of topic.
 
-        self.write(self.encoder.notification(BetelbotMethod.PUBLISH, topic, *params))
         self.logInfo('Publishing to topic "{}"'.format(topic))
+        self.write(self.encoder.notification(BetelbotMethod.PUBLISH, topic, *params))
 
     def subscribe(self, topic, callback=None):
         # Sends a "subscribe" notification to the server.
@@ -72,12 +72,12 @@ class BetelbotClientConnection(JsonRpcConnection):
 
         params = msg.get(jsonrpc.Key.PARAMS, None)
         if len(params) > 1:
+            self.logInfo('Received subscription notification for "{}"'.format(topic))              
             topic = params[0]
             data = params[1:]          
             if topic in self.subscriptionHandlers:
                 for subscriber in self.subscriptionHandlers[topic]:
                     subscriber(topic, data)
-            self.logInfo('Received subscription notification for "{}"'.format(topic))  
 
     def register(self, method, port, host=''):
         # Registers a service with the server. Information needed is method name,
@@ -87,9 +87,9 @@ class BetelbotClientConnection(JsonRpcConnection):
         #
         # Multiple services can be registered by the server by registering
         # a method at a time.
-          
+
+        self.logInfo('Registering service "{}"'.format(method))          
         self.write(self.encoder.notification(BetelbotMethod.REGISTER, method, port, host))
-        self.logInfo('Registering service "{}"'.format(method))
 
     def locate(self, callback, method):
         # Locates the address of a service if it does not exist
@@ -98,13 +98,13 @@ class BetelbotClientConnection(JsonRpcConnection):
         # that the service has been located, the callback is called immediately.
 
         if self.hasService(method) is False:
+            self.logInfo('Locating to service "{}"'.format(method))            
             id = self.idincrement.id()
             self.responseHandlers[id] = lambda msg: self.handleLocateResponse(callback, method, msg)
             self.write(self.encoder.request(id, BetelbotMethod.LOCATE, method))
-            self.logInfo('Locating to service "{}"'.format(method))
         else:
+            self.logInfo('Service "{}" already located'.format(method))            
             callback(True)
-            self.logInfo('Service "{}" already located'.format(method))
 
     def handleLocateResponse(self, callback, method, msg):
         # When the locate method receives a response, this callback will be
@@ -139,13 +139,14 @@ class BetelbotClientConnection(JsonRpcConnection):
         # A service is dynamically added to BetelbotClientConnection, so
         # the method can be called naturally.
 
+        self.logInfo('Adding service "{}"'.format(method))
+
         def request(self, callback, *params):
             conn = client.connect()
             conn.request(callback, method, *params) 
 
         request.__name__ = method
-        setattr(self.__class__, request.__name__, request)
-        self.logInfo('Adding service "{}"'.format(method))           
+        setattr(self.__class__, request.__name__, request)          
 
 
 def main():
