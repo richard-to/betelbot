@@ -139,8 +139,6 @@ class BetelbotConnection(JsonRpcConnection):
         #
         # The locate operation returns the address of service
         
-        self.logInfo('Locating service "{}"'.format(method))
-
         id = msg.get(jsonrpc.Key.ID, None)
         params = msg.get(jsonrpc.Key.PARAMS, None)
         
@@ -152,6 +150,7 @@ class BetelbotConnection(JsonRpcConnection):
             pass
         else:
             method = params[0]            
+            self.logInfo('Locating service "{}"'.format(method))        
             if method in self.services:          
                 port, host = self.services[method]
                 self.write(self.encoder.response(id, port, host))
