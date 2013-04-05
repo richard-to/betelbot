@@ -32,11 +32,17 @@ def main():
 
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
+
+    logger = logging.getLogger('')
+    logger.setLevel(config.get('general', 'log_level'))
+        
     client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
     conn = client.connect()
+    
     topics = getTopics()
     for topic in topics:
         conn.subscribe(topic, onTopicPublished)
+    
     IOLoop.instance().start()
 
 
