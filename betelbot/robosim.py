@@ -15,8 +15,18 @@ from util import Client, signalHandler
 
 
 class RoboSim(object):
+    # RoboSim simulates the real robot.
 
-    def __init__(self, conn, start, goal, delay=5):
+    def __init__(self, conn, start, goal, delay=1):
+        # Initializes RoboSim with certain parameters.
+        # 
+        # - Conn is the connection with master Betelbot server.
+        # - Start is an x,y coordinate that represents robot start position
+        # - Goal is an x,y coordinate that represents robot destination
+        # - Delay is the number of seconds before publishing a move
+        #
+        # Need to add a flag for manual control?
+
         self.delay = delay
         self.start = start
         self.goal = goal
@@ -24,34 +34,33 @@ class RoboSim(object):
         self.moveTopic = MoveTopic()
         self.conn = conn
         self.conn.subscribe(self.cmdTopic.id, self.onCmdPublished)
-        self.conn.locate(self.onLocateResponse, PathfinderMethod.SEARCH)
+        self.conn.locate(self.onLocateResponse, PathfinderMethod.GETDIRECTIONS)
 
     def move(self, direction):
+        # Publish move to subscribers.
+        
         self.conn.publish(self.moveTopic.id, direction)
 
     def onLocateResponse(self, found=False):
+        # If the getdirections method is found, then call service method.
+        
         if found:
-            self.conn.search(self.onSearchResponse, self.start, self.goal)
+            self.conn.getdirections(self.onGetDirectionsResponse, self.start, self.goal)
 
-    def onSearchResponse(self, result):
-        delta = {
-            'k': [-1, 0], 
-            'h': [0, -1], 
-            'j': [1, 0],
-            'l': [0, 1]
-        }
-        current = self.start
-        moves = result[0][1:]
-        for move in moves:
-            temp = [move[0] - current[0], move[1] - current[1]]
-            for key in delta:
-                if delta[key] == temp:
-                    self.move(key)
-                    break
-            current = move
-            time.sleep(self.delay) 
+    def onGetDirectionsResponse(self, result):
+        # Need to make this callback work asynchronously? 
+        # Sleep method blocks everything.
+
+        directions = result[0]
+        for cmd in directions:
+            self.move(cmd)
+            time.sleep(self.delay)
 
     def onCmdPublished(self, topic, data=None):
+        # If simulator receives a command, wait x seconds before 
+        # publishing the move to subscribers.
+        
+        time.sleep(self.delay)        
         self.move(data[0])
 
 
