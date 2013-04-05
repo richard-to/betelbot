@@ -15,17 +15,21 @@ from tornado.netutil import TCPServer
 
 import jsonrpc
 
-from jsonrpc import JsonRpcServer, JsonRpcConnection
 from client import BetelbotClientConnection
+from jsonrpc import JsonRpcServer, JsonRpcConnection
+from topic.default import PathTopic, DirectionsTopic
 from util import Client, signalHandler
 
 
 def convertPathToDirections(path, cmds, delta):
+    # Converts an array of xy coordinates to Betelbot 
+    # commands (hjkl).
+    
     directions = []
     current = path[0]
     moves = path[1:]
     for move in moves:
-        nextDelta = [move[0] - current[0], move[1] - current[1]]
+        nextDelta = [current[0] - move[0], current[1] - move[1]]
         for i in range(len(delta)):
             if delta[i] == nextDelta:
                 directions.append(cmds[i])
@@ -184,6 +188,7 @@ class PathfinderServer(JsonRpcServer):
 
     def onInit(self, **kwargs):
         logging.info('Pathfinder Server is running')
+        self.data['masterConn'] = kwargs['masterConn']
         self.data['pathfinder'] = kwargs['pathfinder']
         self.data['cmds'] = kwargs['cmds']
 
@@ -197,53 +202,54 @@ class PathfinderConnection(JsonRpcConnection):
         # map to pathfinder deltas.
 
         self.logInfo('Received a new connection')
-        
+
+        self.masterConn = kwargs['masterConn']        
         self.pathfinder = kwargs['pathfinder']
         self.cmds = kwargs['cmds']
-
+        self.pathTopic = kwargs.get('pathTopics', PathTopic())
+        self.directionsTopic = kwargs.get('directionsTopic', DirectionsTopic())
+        
         self.methodHandlers = {
-            PathfinderMethod.GETDIRECTIONS: self.handleGetDirections,
+            PathfinderMethod.GETDIRECTIONS: self.handleSearch,
             PathfinderMethod.SEARCH: self.handleSearch,
         }
         self.read()
 
     def handleSearch(self, msg):
-        # Handles "search" operation.
-
-        id = msg.get(jsonrpc.Key.ID, None)
-        params = msg.get(jsonrpc.Key.PARAMS, None)
-        if id and len(params) == 2:
-            start, goal = params
-            placeholders = start + goal            
-            self.logInfo('Searching for path from ({0},{1}) to ({2},{3})..'.format(*placeholders))
-            path = self.pathfinder.search(start, goal)
-            self.write(self.encoder.response(id, path))
-
-    def handleGetDirections(self, msg):
-        # Handles "getdirections" operation.
+        # Handles "search" and "getdirections" operation.
         #
-        # Need to remove some redundant code here
+        # Will send response back to caller, but will also
+        # publish path and directions to any subscribers.
 
         id = msg.get(jsonrpc.Key.ID, None)
+        method = msg.get(jsonrpc.Key.METHOD, None)
         params = msg.get(jsonrpc.Key.PARAMS, None)
+
         if id and len(params) == 2:
             start, goal = params
             placeholders = start + goal            
-            self.logInfo('Searching for directions from ({0},{1}) to ({2},{3})..'.format(*placeholders))
+            
+            self.logInfo('Searching for path from ({0},{1}) to ({2},{3})..'.format(*placeholders))
+            
             path = self.pathfinder.search(start, goal)
             directions = convertPathToDirections(path, self.cmds, self.pathfinder.delta)
-            self.write(self.encoder.response(id, directions))
+            
+            result = path if method == PathfinderMethod.SEARCH else directions            
+            self.masterConn.publish(self.pathTopic.id, path)
+            self.masterConn.publish(self.directionsTopic.id, directions)            
+            self.write(self.encoder.response(id, result))
 
 
+
+      
 def main():
+
     signal.signal(signal.SIGINT, signalHandler)
 
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
     openByte = config.getint('map', 'open')
     grid = cv2.imread(config.get('map-data', 'grid'), cv2.CV_LOAD_IMAGE_GRAYSCALE)
-    start = [int(num) for num in config.get('map', 'start').split(',')]
-    goal = [int(num) for num in config.get('map', 'goal').split(',')]
     cmds = list(config.get('general', 'cmds'))
 
     logger = logging.getLogger('')
@@ -252,13 +258,15 @@ def main():
     pathfinder = Pathfinder(grid, openByte, euclideanDistance)
 
     serverPort = config.getint('pathfinder', 'port')
-    server = PathfinderServer(connection=PathfinderConnection, cmds=cmds, pathfinder=pathfinder)
-    server.listen(serverPort)
 
     client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
     conn = client.connect()
     conn.register(PathfinderMethod.SEARCH, serverPort)
     conn.register(PathfinderMethod.GETDIRECTIONS, serverPort)
+
+    server = PathfinderServer(connection=PathfinderConnection, 
+        masterConn=conn, cmds=cmds, pathfinder=pathfinder)
+    server.listen(serverPort)
 
     IOLoop.instance().start()
 
