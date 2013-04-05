@@ -71,11 +71,11 @@ class BetelbotClientConnection(JsonRpcConnection):
         # connections.
 
         params = msg.get(jsonrpc.Key.PARAMS, None)
-        if len(params) > 1:
-            self.logInfo('Received subscription notification for "{}"'.format(topic))              
+        if len(params) > 1:          
             topic = params[0]
             data = params[1:]          
             if topic in self.subscriptionHandlers:
+                self.logInfo('Received subscription notification for "{}"'.format(topic))
                 for subscriber in self.subscriptionHandlers[topic]:
                     subscriber(topic, data)
 
