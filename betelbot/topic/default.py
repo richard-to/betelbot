@@ -21,3 +21,27 @@ class MoveTopic(CmdTopic):
     def __init__(self):
         super(MoveTopic, self).__init__()
         self.id = 'move'
+
+
+class PathTopic(object):
+    # Placeholder PathTopic for now.
+    # 
+    # Best way to validate?
+
+    def __init__(self):
+        self.id = 'path'
+
+    def isValid(self, *data):
+        return True
+
+
+class DirectionsTopic(object):
+    # Placeholder DirectionsTopic for now.
+    # 
+    # Best way to validate?
+
+    def __init__(self):
+        self.id = 'directions'
+
+    def isValid(self, *data):
+        return True           
