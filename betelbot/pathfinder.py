@@ -20,6 +20,20 @@ from client import BetelbotClientConnection
 from util import Client, signalHandler
 
 
+def convertPathToDirections(path, cmds, delta):
+    directions = []
+    current = path[0]
+    moves = path[1:]
+    for move in moves:
+        nextDelta = [move[0] - current[0], move[1] - current[1]]
+        for i in range(len(delta)):
+            if delta[i] == nextDelta:
+                directions.append(cmds[i])
+                break
+        current = move
+    return directions 
+
+
 def euclideanDistance(x, y, goalX, goalY):
     # Heuristic function for A*.
     #
@@ -60,7 +74,7 @@ class Pathfinder:
         self.grid = grid
         self.openCell = openCell
         self.heuristic = heuristic or self.noHeuristic
-        self.delta = [[-1, 0], [0, -1], [1, 0], [0, 1]]
+        self.delta = [[0, -1],[1, 0],[-1, 0],[0, 1]]
         self.cost = 1     
 
     def search(self, start, goal):
@@ -75,7 +89,7 @@ class Pathfinder:
         gridY, gridX = self.grid.shape        
         closed = np.zeros(self.grid.shape, bool)
         expand = np.empty(self.grid.shape)
-        expand.fill(-1)     
+        expand.fill(-1)
 
         y, x = start
         goalY, goalX = goal
@@ -150,6 +164,12 @@ class PathfinderMethod:
     # - Response: array of [x,y] coordinates    
     SEARCH = 'search'
 
+    # - Type: Request
+    # - Method: getdirections
+    # - Params: start[x,y], goal[x,y]
+    # - Response: array of betelbot commands  
+    GETDIRECTIONS = 'getdirections'    
+
 
 class PathfinderServer(JsonRpcServer):
     # Pathfinder server is a service that finds a path from two points.
@@ -159,21 +179,30 @@ class PathfinderServer(JsonRpcServer):
     #
     # Supported operations:
     #
-    # - search(xStart, yStart, xGoal, yGoal): array of (x,y) coordinates
+    # - search([xStart, yStart], [xGoal, yGoal]): array of (x,y) coordinates
+    # - directions([xStart, yStart], [xGoal, yGoal]): array of commands
 
     def onInit(self, **kwargs):
         logging.info('Pathfinder Server is running')
         self.data['pathfinder'] = kwargs['pathfinder']
+        self.data['cmds'] = kwargs['cmds']
 
 
 class PathfinderConnection(JsonRpcConnection):
 
     def onInit(self, **kwargs):
+        # Initializes pathfinder connection
+        #
+        # Need to have a pathfinder and a cmds array to
+        # map to pathfinder deltas.
+
         self.logInfo('Received a new connection')
         
         self.pathfinder = kwargs['pathfinder']
+        self.cmds = kwargs['cmds']
 
         self.methodHandlers = {
+            PathfinderMethod.GETDIRECTIONS: self.handleGetDirections,
             PathfinderMethod.SEARCH: self.handleSearch,
         }
         self.read()
@@ -190,6 +219,21 @@ class PathfinderConnection(JsonRpcConnection):
             path = self.pathfinder.search(start, goal)
             self.write(self.encoder.response(id, path))
 
+    def handleGetDirections(self, msg):
+        # Handles "getdirections" operation.
+        #
+        # Need to remove some redundant code here
+
+        id = msg.get(jsonrpc.Key.ID, None)
+        params = msg.get(jsonrpc.Key.PARAMS, None)
+        if id and len(params) == 2:
+            start, goal = params
+            placeholders = start + goal            
+            self.logInfo('Searching for directions from ({0},{1}) to ({2},{3})..'.format(*placeholders))
+            path = self.pathfinder.search(start, goal)
+            directions = convertPathToDirections(path, self.cmds, self.pathfinder.delta)
+            self.write(self.encoder.response(id, directions))
+
 
 def main():
     signal.signal(signal.SIGINT, signalHandler)
@@ -200,6 +244,7 @@ def main():
     grid = cv2.imread(config.get('map-data', 'grid'), cv2.CV_LOAD_IMAGE_GRAYSCALE)
     start = [int(num) for num in config.get('map', 'start').split(',')]
     goal = [int(num) for num in config.get('map', 'goal').split(',')]
+    cmds = list(config.get('general', 'cmds'))
 
     logger = logging.getLogger('')
     logger.setLevel(config.get('general', 'log_level'))
@@ -207,12 +252,13 @@ def main():
     pathfinder = Pathfinder(grid, openByte, euclideanDistance)
 
     serverPort = config.getint('pathfinder', 'port')
-    server = PathfinderServer(connection=PathfinderConnection, pathfinder=pathfinder)
+    server = PathfinderServer(connection=PathfinderConnection, cmds=cmds, pathfinder=pathfinder)
     server.listen(serverPort)
 
     client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
     conn = client.connect()
     conn.register(PathfinderMethod.SEARCH, serverPort)
+    conn.register(PathfinderMethod.GETDIRECTIONS, serverPort)
 
     IOLoop.instance().start()
 
