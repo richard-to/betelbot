@@ -14,6 +14,8 @@ import numpy as np
 from tornado.ioloop import IOLoop
 
 from client import BetelbotClientConnection
+from jsonrpc import JsonRpcServer, JsonRpcConnection
+from topic.default import ParticleTopic
 from util import Client, signalHandler
 
 
@@ -171,6 +173,7 @@ class ParticleFilter:
             sampledParticles.append(particles[index])
         return sampledParticles       
 
+
 def moves(directions):
     motions = []
     circle = {
@@ -203,6 +206,7 @@ def moves(directions):
         prev = d
     return motions
 
+
 def sensor(y, x, grid, lookupTable):
     delta = [[1, 0], [0, 1], [1, 0], [0, 1]]    
     Z = []
@@ -216,15 +220,49 @@ def sensor(y, x, grid, lookupTable):
         index += 1
     return Z
 
-def check_output(final_robot, estimated_position):
 
-    error_x = abs(final_robot.x - estimated_position[0])
-    error_y = abs(final_robot.y - estimated_position[1])
-    error_orientation = abs(final_robot.orientation - estimated_position[2])
-    error_orientation = (error_orientation + pi) % (2.0 * pi) - pi
-    correct = error_x < tolerance_xy and error_y < tolerance_xy \
-              and error_orientation < tolerance_orientation
-    return correct
+class ParticleFilterMethod(object):
+    UPDATEPARTICLES = 'updateparticles'
+
+
+class ParticleFilterServer(JsonRpcServer):
+
+    def onInit(self, **kwargs):
+        logging.info('ParticleFilter Server is running')
+        self.data['masterConn'] = kwargs['masterConn']
+        self.data['particleFilter'] = kwargs['particleFilter']
+
+
+class ParticleFilterConnection(JsonRpcConnection):
+
+    def onInit(self, **kwargs):
+
+        self.logInfo('Received a new connection')
+
+        self.masterConn = kwargs['masterConn']        
+        self.particleFilter = kwargs['particleFilter']
+        
+        self.methodHandlers = {
+            ParticleFilterMethod.UPDATEPARTICLES: self.handleUpdateParticles
+        }
+        self.read()
+
+    def handleUpdateParticles(self, msg):
+
+        id = msg.get(jsonrpc.Key.ID, None)
+        method = msg.get(jsonrpc.Key.METHOD, None)
+        params = msg.get(jsonrpc.Key.PARAMS, None)
+
+        if id and len(params) == 2:
+            motion, measurements = params
+
+            self.logInfo('Updating particle filter')
+            
+            self.particleFilter.update(motion, measurements)
+            particles = self.particleFilter.particles
+                      
+            self.masterConn.publish(self.particleTopic.id, particles)         
+            self.write(self.encoder.response(id, particles))
 
 
 def main():
@@ -232,6 +270,9 @@ def main():
 
     config = ConfigParser.SafeConfigParser()
     config.read('config/default.cfg')
+
+    logger = logging.getLogger('')
+    logger.setLevel(config.get('general', 'log_level'))
 
     grid = cv2.imread(config.get('map-data', 'map'), cv2.CV_LOAD_IMAGE_GRAYSCALE)
     lookupTable = np.load(config.get('map-data', 'dmap'))
@@ -241,21 +282,22 @@ def main():
     forwardNoise = config.getfloat('particle', 'forwardNoise')
     turnNoise = config.getfloat('particle', 'turnNoise')
     senseNoise = config.getfloat('particle', 'senseNoise')
+
     particleFilter = ParticleFilter(length, grid, lookupTable)
     particleFilter.makeParticles(forwardNoise, turnNoise, senseNoise)
 
-    directions = [u'j', u'j', u'j', u'j', u'h', u'h', u'h', u'h', u'h', u'h', u'h', u'h', u'h', u'h', u'j', u'j', u'j', u'j', u'j', u'j', u'j', u'j', u'j', u'j', u'h', u'j', u'h']
-    path = [[0, 14], [1, 14], [2, 14], [3, 14], [4, 14], [4, 13], [4, 12], [4, 11], [4, 10], [4, 9], [4, 8], [4, 7], [4, 6], [4, 5], [4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [13, 4], [14, 4], [14, 3], [15, 3], [15, 2]]
-    path.pop(0)
+    serverPort = config.getint('particle', 'port')
 
-    measurements = []
-    for y, x in path:
-        measurements.append(sensor(y, x, grid, lookupTable))
-    motions = moves(directions)
+    client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
+    conn = client.connect()
+    conn.register(ParticleFilterMethod.UPDATEPARTICLES, serverPort)
 
-    for i in range(len(motions)):
-        particleFilter.update(motions[i], measurements[i])
-    print getPosition(particleFilter.particles)
+    server = ParticleFilterServer(connection=ParticleFilterConnection, 
+        masterConn=conn, particleFilter=particleFilter)
+    server.listen(serverPort)
+
+    IOLoop.instance().start()
+
 
 if __name__ == '__main__':
     main()
