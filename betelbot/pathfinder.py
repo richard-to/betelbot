@@ -159,20 +159,19 @@ class Pathfinder:
         return 0
 
 
+class PathfinderSearchType:
+    PATH = 1
+    DIRECTIONS = 2
+    BOTH = 3
+
 class PathfinderMethod:
     # Methods supported by Pathfinder server
 
     # - Type: Request
     # - Method: search
-    # - Params: start[x,y], goal[x,y]
-    # - Response: array of [x,y] coordinates    
+    # - Params: start[x,y], goal[x,y], PathfinderSearchType
+    # - Response: Depends on type   
     SEARCH = 'search'
-
-    # - Type: Request
-    # - Method: getdirections
-    # - Params: start[x,y], goal[x,y]
-    # - Response: array of betelbot commands  
-    GETDIRECTIONS = 'getdirections'    
 
 
 class PathfinderServer(JsonRpcServer):
@@ -210,7 +209,6 @@ class PathfinderConnection(JsonRpcConnection):
         self.directionsTopic = kwargs.get('directionsTopic', DirectionsTopic())
         
         self.methodHandlers = {
-            PathfinderMethod.GETDIRECTIONS: self.handleSearch,
             PathfinderMethod.SEARCH: self.handleSearch,
         }
         self.read()
@@ -225,19 +223,27 @@ class PathfinderConnection(JsonRpcConnection):
         method = msg.get(jsonrpc.Key.METHOD, None)
         params = msg.get(jsonrpc.Key.PARAMS, None)
 
-        if id and len(params) == 2:
-            start, goal = params
+        if id and len(params) == 3:
+            start, goal, type = params
             placeholders = start + goal            
             
             self.logInfo('Searching for path from ({0},{1}) to ({2},{3})..'.format(*placeholders))
             
             path = self.pathfinder.search(start, goal)
             directions = convertPathToDirections(path, self.cmds, self.pathfinder.delta)
-            
-            result = path if method == PathfinderMethod.SEARCH else directions            
+                       
             self.masterConn.publish(self.pathTopic.id, path)
             self.masterConn.publish(self.directionsTopic.id, directions)            
-            self.write(self.encoder.response(id, result))
+            
+            result = []
+            
+            if type != PathfinderSearchType.DIRECTIONS:
+                result.append(path)
+
+            if type != PathfinderSearchType.PATH:
+                result.append(directions)
+            
+            self.write(self.encoder.response(id, *result))
 
       
 def main():
@@ -260,7 +266,6 @@ def main():
     client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
     conn = client.connect()
     conn.register(PathfinderMethod.SEARCH, serverPort)
-    conn.register(PathfinderMethod.GETDIRECTIONS, serverPort)
 
     server = PathfinderServer(connection=PathfinderConnection, 
         masterConn=conn, cmds=cmds, pathfinder=pathfinder)
