@@ -44,4 +44,12 @@ class DirectionsTopic(object):
         self.id = 'directions'
 
     def isValid(self, *data):
-        return True           
+        return True
+
+
+class ParticleTopic(object):
+    def __init__(self):
+        self.id = 'particle'
+
+    def isValid(self, *data):
+        return True                
