@@ -11,12 +11,37 @@ from math import atan2, cos, exp, pi, cos, sin, sqrt, tan
 import cv2
 import numpy as np
 
+from numpy import inf
 from tornado.ioloop import IOLoop
+
+import jsonrpc
 
 from client import BetelbotClientConnection
 from jsonrpc import JsonRpcServer, JsonRpcConnection
 from topic.default import ParticleTopic
 from util import Client, signalHandler
+
+
+def convertToMotion(start, dest, gridSize):
+    rotationDist = {
+        'l': 0, 
+        'j': 1, 
+        'h': 2, 
+        'k': 3
+    }
+    rotation = 0
+    dist = rotationDist[dest] - rotationDist[start]
+        
+    if dist == 0:
+        rotation = 0
+    elif dist == 1 or dist == -3:
+        rotation = pi/2
+    elif dist == 2 or dist == -2:
+        rotation = pi
+    elif dist == 3 or dist == -1:
+        rotation = -pi/2
+    
+    return [rotation, gridSize]
 
 
 class Particle:
@@ -53,24 +78,6 @@ class Particle:
         self.forwardNoise  = float(fNoise)
         self.turnNoise = float(tNoise)
         self.senseNoise = float(sNoise)
-
-    def measurementProb(self, measurements):
-        prob = 1.0
-        if (self.y >= 0 and self.y < self.grid.shape[0] and
-            self.x >= 0 and self.x < self.grid.shape[1] and
-            self.grid[self.y][self.x] > 0):
-            count = len(self.delta) 
-            index = self.y * self.grid.shape[1] * count + self.x * count
-            for i in xrange(count):
-                value = self.lookupTable[index]
-                dy = value * self.delta[i][0]
-                dx = value * self.delta[i][1]
-                index += 1
-                dist = dy or dx
-                prob *= self.gaussian(float(dist), self.senseNoise, float(measurements[i]))
-        else:
-            prob = 0
-        return prob
     
     def move(self, motion):
         turn, forward = motion
@@ -78,7 +85,6 @@ class Particle:
         if forward < 0:
             raise ValueError, 'Robot cant move backwards'         
         
-        # turn, and add randomness to the turning command
         orientation = self.orientation + float(turn) + random.gauss(0.0, self.turnNoise)
         orientation %= 2 * pi
         
@@ -93,8 +99,10 @@ class Particle:
         return particle
     
     def sense(self, hasNoise=False):
-        if self.grid[self.y][self.x] and self.grid[self.y][self.x] > 0:
-            Z = []
+        Z = []        
+        if (self.y >= 0 and self.y < self.grid.shape[0] and
+            self.x >= 0 and self.x < self.grid.shape[1] and
+            self.grid[self.y][self.x] > 0):
             count = len(self.delta) 
             index = self.y * self.grid.shape[1] * count + self.x * count
             for i in xrange(count):
@@ -102,10 +110,20 @@ class Particle:
                 dy = value * self.delta[i][0]
                 dx = value * self.delta[i][1]
                 index += 1
-                Z.append(dy or dx)
+                dist = dy or dx
+                if hasNoise:
+                    dist += random.gauss(0.0, self.senseNoise)
+                Z.append(dist)
         else:
             Z = [inf, inf, inf, inf]
         return Z
+
+    def measurementProb(self, measurements):
+        prob = 1.0
+        Z = self.sense()
+        for i in xrange(len(Z)):
+            prob *= self.gaussian(float(Z[i]), self.senseNoise, float(measurements[i]))
+        return prob
 
     def gaussian(self, mu, sigma, x):
         return exp(- ((mu - x) ** 2) / (sigma ** 2) / 2.0) / sqrt(2.0 * pi * (sigma ** 2))
@@ -113,21 +131,6 @@ class Particle:
     def __repr__(self):
         return '[y=%.6s x=%.6s orient=%.6s]' % (str(self.y), str(self.x), 
                                                 str(self.orientation))
-
-
-def getPosition(p):
-    x = 0.0
-    y = 0.0
-    orientation = 0.0
-    for i in range(len(p)):
-        x += p[i].x
-        y += p[i].y
-        # orientation is tricky because it is cyclic. By normalizing
-        # around the first particle we are somewhat more robust to
-        # the 0=2pi problem
-        orientation += (((p[i].orientation - p[0].orientation + pi) % (2.0 * pi)) 
-                        + p[0].orientation - pi)
-    return [y / len(p), x / len(p), orientation / len(p)]
 
 
 class ParticleFilter:
@@ -173,52 +176,16 @@ class ParticleFilter:
             sampledParticles.append(particles[index])
         return sampledParticles       
 
-
-def moves(directions):
-    motions = []
-    circle = {
-        'l': 0, 
-        'j': pi/2, 
-        'h': pi, 
-        'k': 3 * pi / 2
-    }
-    test = {
-        'l': 0, 
-        'j': 1, 
-        'h': 2, 
-        'k': 3
-    }
-    prev = directions.pop(0)
-    for d in directions:
-        rot = 0
-        dist = test[d] - test[prev]
-        
-        if dist == 0:
-            rot = 0
-        elif dist == 1 or dist == -3:
-            rot = pi/2
-        elif dist == 2 or dist == -2:
-            rot = pi
-        elif dist == 3 or dist == -1:
-            rot = -pi/2
-        
-        motions.append([rot, 20.])
-        prev = d
-    return motions
-
-
-def sensor(y, x, grid, lookupTable):
-    delta = [[1, 0], [0, 1], [1, 0], [0, 1]]    
-    Z = []
-    count = len(delta) 
-    index = y * 20 * grid.shape[1] * count + x * 20 * count
-    for i in xrange(count):
-        value = lookupTable[index]
-        dy = value * delta[i][0]
-        dx = value * delta[i][1]
-        Z.append(dy or dx)
-        index += 1
-    return Z
+    def getPosition(self, p):
+        x = 0.0
+        y = 0.0
+        orientation = 0.0
+        for i in range(len(p)):
+            x += p[i].x
+            y += p[i].y
+            orientation += (((p[i].orientation - p[0].orientation + pi) % (2.0 * pi)) 
+                            + p[0].orientation - pi)
+        return [y / len(p), x / len(p), orientation / len(p)]
 
 
 class ParticleFilterMethod(object):
@@ -242,6 +209,8 @@ class ParticleFilterConnection(JsonRpcConnection):
         self.masterConn = kwargs['masterConn']        
         self.particleFilter = kwargs['particleFilter']
         
+        self.particleTopic = ParticleTopic()
+
         self.methodHandlers = {
             ParticleFilterMethod.UPDATEPARTICLES: self.handleUpdateParticles
         }
@@ -259,7 +228,7 @@ class ParticleFilterConnection(JsonRpcConnection):
             self.logInfo('Updating particle filter')
             
             self.particleFilter.update(motion, measurements)
-            particles = self.particleFilter.particles
+            particles = self.particleFilter.getData()
                       
             self.masterConn.publish(self.particleTopic.id, particles)         
             self.write(self.encoder.response(id, particles))
