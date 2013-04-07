@@ -29,7 +29,7 @@ def convertPathToDirections(path, cmds, delta):
     current = path[0]
     moves = path[1:]
     for move in moves:
-        nextDelta = [current[0] - move[0], current[1] - move[1]]
+        nextDelta = [move[0] - current[0], move[1] - current[1]]
         for i in range(len(delta)):
             if delta[i] == nextDelta:
                 directions.append(cmds[i])
@@ -149,7 +149,7 @@ class Pathfinder:
                         px = dx
                         py = dy
                         break
-
+        path.reverse()                        
         return path
 
     def noHeuristic(self, x, y, goalX, goalY):
