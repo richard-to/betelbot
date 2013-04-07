@@ -239,8 +239,6 @@ class PathfinderConnection(JsonRpcConnection):
             self.masterConn.publish(self.directionsTopic.id, directions)            
             self.write(self.encoder.response(id, result))
 
-
-
       
 def main():
 
