@@ -23,6 +23,18 @@ class MoveTopic(CmdTopic):
         self.id = 'move'
 
 
+class SenseTopic(object):
+    # Placeholder PathTopic for now.
+    # 
+    # Best way to validate?
+
+    def __init__(self):
+        self.id = 'sense'
+
+    def isValid(self, *data):
+        return True
+
+
 class PathTopic(object):
     # Placeholder PathTopic for now.
     # 
