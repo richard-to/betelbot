@@ -55,20 +55,20 @@ class RoboSim(object):
     def move(self):
         # Publish move to subscribers.
 
-        if self.path and self.moveIndex < len(self.path) - 1:
+        if self.path and self.moveIndex < len(self.path):
 
-            start = self.directions[self.moveIndex]
+            dest = self.directions[self.moveIndex]
             if self.moveIndex > 0:
-                dest = self.directions[self.moveIndex + 1]
+                start = self.directions[self.moveIndex - 1]
             else: 
-                dest = start
+                start = dest
             motion = convertToMotion(start, dest, self.gridSize)
 
-            self.moveIndex += 1
-            
             y, x = self.path[self.moveIndex]   
             measurements = self.sense(dest, y, x)
 
+            self.moveIndex += 1
+            
             self.conn.publish(self.moveTopic.id, dest)
             self.conn.publish(self.senseTopic.id, measurements)
 
