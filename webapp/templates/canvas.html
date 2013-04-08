@@ -88,8 +88,8 @@
 
                 _.each(particles, function(element) {
                     context.putImageData(imageData, 
-                        (element[0] * scale) - size, 
-                        (element[1] * scale) - size);        
+                        (element[1] * scale) - size, 
+                        (element[0] * scale) - size);        
                 });
             }
 
@@ -167,10 +167,10 @@
 
                 context.strokeStyle = '#0000ff';
                 for (i = 1; i < path.length; i++) {
-                    var x1 = path[i - 1][0];
-                    var y1 = path[i - 1][1];
-                    var x2 = path[i][0];                    
-                    var y2 = path[i][1];
+                    var x1 = path[i - 1][1];
+                    var y1 = path[i - 1][0];
+                    var x2 = path[i][1];                    
+                    var y2 = path[i][0];
 
                     context.beginPath();
                     context.moveTo(x1 * scaledGridSize + scaledGridSize/2, y1 * scaledGridSize + scaledGridSize/2);
@@ -181,15 +181,15 @@
 
                 context.beginPath();
                 context.arc(
-                    path[0][0] * scaledGridSize + scaledGridSize/2,
-                    path[0][1] * scaledGridSize + scaledGridSize/2, radius, 0, 2 * Math.PI, false);
+                    path[0][1] * scaledGridSize + scaledGridSize/2,
+                    path[0][0] * scaledGridSize + scaledGridSize/2, radius, 0, 2 * Math.PI, false);
                 context.fillStyle = '#0000ff';
                 context.fill();
 
                 context.beginPath();
                 context.arc(
-                    path[path.length - 1][0] * scaledGridSize + scaledGridSize/2,
-                    path[path.length - 1][1] * scaledGridSize + scaledGridSize/2, radius, 0, 2 * Math.PI, false);
+                    path[path.length - 1][1] * scaledGridSize + scaledGridSize/2,
+                    path[path.length - 1][0] * scaledGridSize + scaledGridSize/2, radius, 0, 2 * Math.PI, false);
                 context.fillStyle = '#0000ff';
                 context.fill();                     
             }
@@ -204,20 +204,42 @@
                 context.fillStyle = '#00ff00';
                 for (i = 0; i < path.length; i++) {
                     context.beginPath();
-                    context.rect(path[i][0] * scaledGridSize + 1, 
-                        path[i][1] * scaledGridSize + 1, 
+                    context.rect(path[i][1] * scaledGridSize + 1, 
+                        path[i][0] * scaledGridSize + 1, 
                         scaledGridSize - scale, scaledGridSize - scale);
                     context.fill();
                 }               
             }
 
+            function refreshCanvas(context, canvas, map, path, particles) {
+                
+                context.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (map) {
+                    drawMapImage(canvas, map, 2);
+                    drawGrid(canvas, 20, 2); 
+                }
+
+                if (path) {
+                    drawPath(canvas, path, 20, 2);
+                    drawLinePath(canvas, path, 20, 2); 
+                }
+
+                if (particles) {
+                    drawParticles(canvas, particles, 2, 2);    
+                }                
+            }
+
             var canvas = document.getElementById('map');
             var context = canvas.getContext('2d');
+            var map = null;
+            var path = null;
+            var particles = null;
 
             $.get('/static/data/map.json', function(data) {
 
-                drawMapImage(canvas, data, 2);
-                drawGrid(canvas, 20, 2); 
+                map = data;
+                refreshCanvas(context, canvas, map, path, particles);
 
                 var ws = new WebSocket("ws://localhost:8889/socket");
             
@@ -227,8 +249,16 @@
 
                 ws.onmessage = function(event) {
                     var response = JSON.parse(event.data);
-                    console.log(response);
-
+                    switch(response.method) {
+                        case 'particle':
+                            particles = response.params[0];
+                            refreshCanvas(context, canvas, map, path, particles);
+                        break;
+                        case 'path':
+                            path = response.params[0];
+                            refreshCanvas(context, canvas, map, path, particles);
+                        break;
+                    }
                 }
  
                 // path = [[2, 15], [2, 14], [2, 13], [2, 12], [2, 11], [2, 10], [2, 9], [2, 8], [2, 7], [2, 6], [2, 5], [2, 4], [2, 3], [2, 2], [2, 1], [2, 0], [3, 0], [4, 0], [5, 0], [6, 0], [7, 0], [8, 0], [9, 0], [10, 0], [11, 0], [12, 0], [13, 0], [14, 0]]; 
