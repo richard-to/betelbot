@@ -4,7 +4,7 @@ from config import default
 
 
 app = Flask(__name__)
-app.config.from_object(default)  
+app.config.from_object(default)
 
 
 @app.route('/')
@@ -15,11 +15,6 @@ def index():
 @app.route('/canvas')
 def canvas():
     return render_template('canvas.html')
-
-
-@app.route('/test')
-def test():
-    return render_template('test.html')
 
 
 def main():  
