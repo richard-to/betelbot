@@ -198,8 +198,7 @@ class ParticleFilterServer(JsonRpcServer):
         logging.info('ParticleFilter Server is running')
         self.data['masterConn'] = kwargs['masterConn']
         self.data['particleFilter'] = kwargs['particleFilter']
-        particles = self.data['particleFilter'].getData()              
-        self.data['masterConn'].publish(self.particleTopic.id, particles)
+        self.data['particleTopic'] = kwargs['particleTopic']
 
 
 class ParticleFilterConnection(JsonRpcConnection):
@@ -210,8 +209,7 @@ class ParticleFilterConnection(JsonRpcConnection):
 
         self.masterConn = kwargs['masterConn']        
         self.particleFilter = kwargs['particleFilter']
-        
-        self.particleTopic = ParticleTopic()
+        self.particleTopic = kwargs['particleTopic']
 
         self.methodHandlers = {
             ParticleFilterMethod.UPDATEPARTICLES: self.handleUpdateParticles
@@ -255,17 +253,21 @@ def main():
     turnNoise = config.getfloat('particle', 'turnNoise')
     senseNoise = config.getfloat('particle', 'senseNoise')
 
+    particleTopic = ParticleTopic()
+
     particleFilter = ParticleFilter(length, grid, lookupTable)
     particleFilter.makeParticles(forwardNoise, turnNoise, senseNoise)
+    particles = particleFilter.getData() 
 
     serverPort = config.getint('particle', 'port')
 
     client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
     conn = client.connect()
-    conn.register(ParticleFilterMethod.UPDATEPARTICLES, serverPort)
+    conn.register(ParticleFilterMethod.UPDATEPARTICLES, serverPort)             
+    conn.publish(particleTopic.id, particles)
 
     server = ParticleFilterServer(connection=ParticleFilterConnection, 
-        masterConn=conn, particleFilter=particleFilter)
+        masterConn=conn, particleFilter=particleFilter, particleTopic=particleTopic)
     server.listen(serverPort)
 
     IOLoop.instance().start()
