@@ -52,13 +52,11 @@ class BetelbotClientConnection(JsonRpcConnection):
         #
         # Anytime data gets published to the topic, client will be notified 
         # and the specified callback will be invoked.
-
+        self.logInfo('Subscribing to topic "{}"'.format(topic)) 
         if topic not in self.subscriptionHandlers:
             self.subscriptionHandlers[topic] = []
- 
+            self.write(self.encoder.notification(BetelbotMethod.SUBSCRIBE, topic))
         self.subscriptionHandlers[topic].append(callback)
-        self.write(self.encoder.notification(BetelbotMethod.SUBSCRIBE, topic))
-        self.logInfo('Subscribing to topic "{}"'.format(topic)) 
 
     def handleNotifySub(self, msg):
         # Handles subscription notifcation.
@@ -77,7 +75,10 @@ class BetelbotClientConnection(JsonRpcConnection):
             if topic in self.subscriptionHandlers:
                 self.logInfo('Received subscription notification for "{}"'.format(topic))
                 for subscriber in self.subscriptionHandlers[topic]:
-                    subscriber(topic, data)
+                    try:
+                        subscriber(topic, data)
+                    except AttributeError:
+                        self.subscriptionHandlers[topic].remove(subscriber)
 
     def register(self, method, port, host=''):
         # Registers a service with the server. Information needed is method name,
