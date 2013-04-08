@@ -67,25 +67,29 @@ class RoboSim(object):
             self.moveIndex += 1
             
             y, x = self.path[self.moveIndex]   
-            measurements = self.sense(y, x)
+            measurements = self.sense(dest, y, x)
 
             self.conn.publish(self.moveTopic.id, dest)
             self.conn.publish(self.senseTopic.id, measurements)
 
             self.conn.updateparticles(self.onUpdateParticlesResponse, motion, measurements)
 
-    def sense(self, y, x):
-        delta = [[1, 0], [0, 1], [1, 0], [0, 1]]  
+    def sense(self, direction, y, x):
+        delta = [[1, 0], [0, 1], [1, 0], [0, 1]]
+        directions = ['k', 'h', 'j', 'l']
         Z = []
         count = len(delta)
         y = y * self.gridSize + self.gridSize/2
         x = x * self.gridSize + self.gridSize/2
         index = y * self.grid.shape[1] * count + x * count
         for i in xrange(count):
-            value = self.lookupTable[index]
-            dy = value * delta[i][0]
-            dx = value * delta[i][1]
-            Z.append(int(dy or dx))
+            if direction != directions[i]:
+                value = self.lookupTable[index]
+                dy = value * delta[i][0]
+                dx = value * delta[i][1]
+                Z.append(int(dy or dx))
+            else:
+                Z.append(None)
             index += 1
         return Z
 

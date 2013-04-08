@@ -122,7 +122,8 @@ class Particle:
         prob = 1.0
         Z = self.sense()
         for i in xrange(len(Z)):
-            prob *= self.gaussian(float(Z[i]), self.senseNoise, float(measurements[i]))
+            if measurements[i] is not None:
+                prob *= self.gaussian(float(Z[i]), self.senseNoise, float(measurements[i]))
         return prob
 
     def gaussian(self, mu, sigma, x):
