@@ -198,6 +198,8 @@ class ParticleFilterServer(JsonRpcServer):
         logging.info('ParticleFilter Server is running')
         self.data['masterConn'] = kwargs['masterConn']
         self.data['particleFilter'] = kwargs['particleFilter']
+        particles = self.data['particleFilter'].getData()              
+        self.data['masterConn'].publish(self.particleTopic.id, particles)
 
 
 class ParticleFilterConnection(JsonRpcConnection):
@@ -214,6 +216,7 @@ class ParticleFilterConnection(JsonRpcConnection):
         self.methodHandlers = {
             ParticleFilterMethod.UPDATEPARTICLES: self.handleUpdateParticles
         }
+
         self.read()
 
     def handleUpdateParticles(self, msg):
