@@ -32,10 +32,11 @@
                     var index = Math.floor(y / scale);
                     var col = y * canvas.width * rgbaBytes;
                     _.each(data[index], function(element) {
-                        _(scale).times(function(n) { 
-                            imageData.data[col++] = element;
-                            imageData.data[col++] = element;
-                            imageData.data[col++] = element;
+                        _(scale).times(function(n) {
+                            var color = (element < 200) ? 240 : element;
+                            imageData.data[col++] = color;
+                            imageData.data[col++] = color;
+                            imageData.data[col++] = color;
                             imageData.data[col++] = opacity; 
                         });
                     });
@@ -47,7 +48,7 @@
                 scale = scale || 1;
                 gridSize = gridSize || 20;
 
-                var color = '#aaa';
+                var color = '#ccc';
                 var originX = 0;
                 var originY = 0;
 
@@ -86,7 +87,7 @@
                     context.arc(element[1] * scale, element[0] * scale, size, 0, 2 * Math.PI, false);
                     context.fillStyle = 'rgba(0,0,0,0)';
                     context.fill();
-                    context.lineWidth = 1;
+                    context.lineWidth = 2;
                     context.strokeStyle = 'rgba(20,20,20,.4)';
                     context.stroke();                           
                 });
@@ -163,8 +164,8 @@
                 var radius = 2 * scale;
                 var scaledGridSize = gridSize * scale;
                 var context = canvas.getContext('2d');
-
-                context.strokeStyle = '#0000ff';
+                var lineColor = 'rgba(40, 50, 40, 1)';
+                context.strokeStyle = lineColor;
                 for (i = 1; i < path.length; i++) {
                     var x1 = path[i - 1][1];
                     var y1 = path[i - 1][0];
@@ -182,14 +183,14 @@
                 context.arc(
                     path[0][1] * scaledGridSize + scaledGridSize/2,
                     path[0][0] * scaledGridSize + scaledGridSize/2, radius, 0, 2 * Math.PI, false);
-                context.fillStyle = '#0000ff';
+                context.fillStyle = lineColor;
                 context.fill();
 
                 context.beginPath();
                 context.arc(
                     path[path.length - 1][1] * scaledGridSize + scaledGridSize/2,
                     path[path.length - 1][0] * scaledGridSize + scaledGridSize/2, radius, 0, 2 * Math.PI, false);
-                context.fillStyle = '#0000ff';
+                context.fillStyle = lineColor;
                 context.fill();                     
             }
 
@@ -200,7 +201,7 @@
                 var scaledGridSize = gridSize * scale;
                 var context = canvas.getContext('2d');
 
-                context.fillStyle = '#00ff00';
+                context.fillStyle = 'rgba(100, 100, 100, .4)';
                 for (i = 0; i < path.length; i++) {
                     context.beginPath();
                     context.rect(path[i][1] * scaledGridSize + 1, 
@@ -211,21 +212,21 @@
             }
 
             function refreshCanvas(context, canvas, map, path, particles) {
+                var scale = 2;                
                 
                 context.clearRect(0, 0, canvas.width, canvas.height);
 
                 if (map) {
-                    drawMapImage(canvas, map, 2);
-                    drawGrid(canvas, 20, 2); 
+                    drawMapImage(canvas, map, scale);
+                    drawGrid(canvas, 20, scale); 
                 }
 
                 if (path) {
-                    drawPath(canvas, path, 20, 2);
-                    drawLinePath(canvas, path, 20, 2); 
+                    drawLinePath(canvas, path, 20, scale); 
                 }
 
                 if (particles) {
-                    drawParticles(canvas, particles, 2, 6);    
+                    drawParticles(canvas, particles, scale, 6);    
                 }                
             }
 
