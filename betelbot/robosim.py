@@ -40,7 +40,6 @@ class RoboSim(object):
         self.lookupTable = lookupTable
         self.delay = delay
         
-        self.cmdTopic = CmdTopic()
         self.moveTopic = MoveTopic()
         self.senseTopic = SenseTopic()
 
@@ -49,29 +48,39 @@ class RoboSim(object):
         self.path = None
 
         self.conn = conn
-        self.conn.subscribe(self.cmdTopic.id, self.onCmdPublished)
+
         self.conn.locate(self.onLocateResponse, ParticleFilterMethod.UPDATEPARTICLES)
         self.conn.locate(self.onLocateResponse, PathfinderMethod.SEARCH)
 
-    def move(self, direction):
+    def move(self):
         # Publish move to subscribers.
 
-        self.moveIndex += 1
-        y, x = self.path[self.moveIndex]        
-        measurements = self.sense(y, x)
-        motion = convertToMotion(direction, self.directions[self.moveIndex], self.gridSize)
+        if self.path and self.moveIndex < len(self.path) - 1:
+            
+            start = self.directions[self.moveIndex]
+            if self.moveIndex > 0:
+                dest = self.directions[self.moveIndex + 1]
+            else: 
+                dest = start
+            motion = convertToMotion(start, dest, self.gridSize)
+            
+            self.moveIndex += 1
 
-        self.conn.publish(self.moveTopic.id, direction)
-        self.conn.publish(self.senseTopic.id, measurements)
+            y, x = self.path[self.moveIndex]   
+            measurements = self.sense(y, x)
 
-        self.conn.updateparticles(self.onUpdateParticlesResponse, motion, measurements)
+            self.conn.publish(self.moveTopic.id, dest)
+            self.conn.publish(self.senseTopic.id, measurements)
 
+            self.conn.updateparticles(self.onUpdateParticlesResponse, motion, measurements)
 
     def sense(self, y, x):
         delta = [[1, 0], [0, 1], [1, 0], [0, 1]]  
         Z = []
-        count = len(delta) 
-        index = y * self.gridSize * self.grid.shape[1] * count + x * self.gridSize * count
+        count = len(delta)
+        y = y * self.gridSize;
+        x = x * self.gridSize;
+        index = y * self.grid.shape[1] * count + x * count
         for i in xrange(count):
             value = self.lookupTable[index]
             dy = value * delta[i][0]
@@ -79,7 +88,6 @@ class RoboSim(object):
             Z.append(int(dy or dx))
             index += 1
         return Z
-
 
     def onLocateResponse(self, found=False):
         # If the getdirections method is found, then call service method.
@@ -93,21 +101,15 @@ class RoboSim(object):
         # Need to make this callback work asynchronously? 
         # Sleep method blocks everything.
 
-        self.path = result[0]
         self.directions = result[1]
-        self.move(self.directions[self.moveIndex])
+        self.path = result[0]
+        self.path.pop(0)
+        self.move()
 
     def onUpdateParticlesResponse(self, result):
 
         time.sleep(self.delay)
-        self.move(self.directions[self.moveIndex])
-
-    def onCmdPublished(self, topic, data=None):
-        # If simulator receives a command, wait x seconds before 
-        # publishing the move to subscribers.
-        
-        time.sleep(self.delay)        
-        self.move(data[0])
+        self.move()
 
 
 def main():
