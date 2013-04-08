@@ -74,11 +74,15 @@ class BetelbotClientConnection(JsonRpcConnection):
             data = params[1:]          
             if topic in self.subscriptionHandlers:
                 self.logInfo('Received subscription notification for "{}"'.format(topic))
+                disconnected = []
                 for subscriber in self.subscriptionHandlers[topic]:
                     try:
                         subscriber(topic, data)
                     except AttributeError:
-                        self.subscriptionHandlers[topic].remove(subscriber)
+                        disconnected.append(subscriber)
+
+                for subscriber in disconnected:
+                    self.subscriptionHandlers[topic].remove(subscriber)
 
     def register(self, method, port, host=''):
         # Registers a service with the server. Information needed is method name,
