@@ -56,7 +56,7 @@ class RoboSim(object):
         # Publish move to subscribers.
 
         if self.path and self.moveIndex < len(self.path) - 1:
-            
+
             start = self.directions[self.moveIndex]
             if self.moveIndex > 0:
                 dest = self.directions[self.moveIndex + 1]
@@ -68,7 +68,7 @@ class RoboSim(object):
 
             y, x = self.path[self.moveIndex]   
             measurements = self.sense(y, x)
-
+            
             self.conn.publish(self.moveTopic.id, dest)
             self.conn.publish(self.senseTopic.id, measurements)
 
@@ -78,8 +78,8 @@ class RoboSim(object):
         delta = [[1, 0], [0, 1], [1, 0], [0, 1]]  
         Z = []
         count = len(delta)
-        y = y * self.gridSize;
-        x = x * self.gridSize;
+        y = y * self.gridSize + self.gridSize/2;
+        x = x * self.gridSize + self.gridSize/2;
         index = y * self.grid.shape[1] * count + x * count
         for i in xrange(count):
             value = self.lookupTable[index]
