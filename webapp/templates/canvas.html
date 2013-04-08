@@ -58,6 +58,7 @@
 
                 _(Math.floor(canvas.width / scaledGridSize) + 1).times(function(n) {
                     context.beginPath();
+                    context.lineWidth = 1;
                     context.moveTo(n * scaledGridSize, originY);
                     context.lineTo(n * scaledGridSize, canvas.height);
                     context.stroke();
@@ -65,6 +66,7 @@
                 
                 _(Math.floor(canvas.height / scaledGridSize) + 1).times(function(n) {
                     context.beginPath();
+                    context.lineWidth = 1;
                     context.moveTo(originX, n * scaledGridSize);
                     context.lineTo(canvas.width, n * scaledGridSize);
                     context.stroke();
@@ -75,21 +77,18 @@
                 scale = scale || 1;
                 size = size || 1;
 
-                var colorRgba = [255, 0, 0, 255];
-                var rgbaBytes = 4;
-
+                var radius = size * scale;
                 var scaledSize = size * scale;
-                var context = canvas.getContext('2d');
-                var imageData = context.createImageData(scaledSize, scaledSize);
-
-                _.each(imageData.data, function(element, index) {
-                    imageData.data[index] = colorRgba[index % rgbaBytes];
-                });
+                var context = canvas.getContext('2d');          
 
                 _.each(particles, function(element) {
-                    context.putImageData(imageData, 
-                        (element[1] * scale) - size, 
-                        (element[0] * scale) - size);        
+                    context.beginPath();
+                    context.arc(element[1] * scale, element[0] * scale, size, 0, 2 * Math.PI, false);
+                    context.fillStyle = 'rgba(0,0,0,0)';
+                    context.fill();
+                    context.lineWidth = 1;
+                    context.strokeStyle = 'rgba(20,20,20,.4)';
+                    context.stroke();                           
                 });
             }
 
@@ -226,7 +225,7 @@
                 }
 
                 if (particles) {
-                    drawParticles(canvas, particles, 2, 2);    
+                    drawParticles(canvas, particles, 2, 6);    
                 }                
             }
 
