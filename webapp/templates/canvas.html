@@ -6,16 +6,82 @@
         <title></title>
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href='http://fonts.googleapis.com/css?family=Quicksand:300' rel='stylesheet' type='text/css'>
+        <link href="/static/css/vendor/bootstrap.css" rel="stylesheet">
+        <!--<link href="/static/css/vendor/bootstrap-responsive.css" rel="stylesheet">-->       
         <style>
+        body {
+            background: #fcfcfc;
+            padding-top: 20px;
+            padding-bottom: 40px;            
+        }
+
+        h1 {
+            color: #777;
+            font-size: 30px;
+            font-family: 'Quicksand', sans-serif;
+        }
+
+        h4 {
+            color:#999;
+            font-weight:normal;           
+        }
+
+        label {
+            color: #999;
+        }
+
+        canvas {
+            margin: auto;
+            width:600px;
+            display:block;
+        }
+
+        .container-map {
+            background:#f9f9f9;
+            border:1px solid #efefef;
+        }
+       
         </style>
     </head>
     <body>
-        <div id="main-container">
-            <canvas id="map" width="600" height="680" style="padding:20px">
-            </canvas>
+        <div class="container">
+            <div class="masthead">
+                <h1>Betelbot</h1>
+            </div>
+
+            <div class="row">
+                <div class="span8">
+                    <div class="well well-small">
+                        <canvas id="map" width="600" height="680"></canvas>
+                    </div>
+                </div>
+                <div class="span4">
+                    <div class="well well-small">
+                        <button type="button" class="btn btn-inverse">Connect to server</button>
+                    </div>
+                    <div class="well well-small">
+                        <label>Betelbot</label>
+                        <div class="btn-group" data-toggle="buttons-radio">
+                            <button type="button" class="btn">On</button>
+                            <button type="button" class="btn">Off</button>
+                        </div>
+                    </div>
+                    <div class="well well-small">
+                        <label>Autonomous Mode</label>
+                        <div class="btn-group" data-toggle="buttons-radio">
+                            <button type="button" class="btn">On</button>
+                            <button type="button" class="btn">Off</button>
+                        </div>  
+                    </div>
+                </div>
+            </div>
         </div>
+        
         <script src="/static/js/vendor/jquery.js"></script>
         <script src="/static/js/vendor/underscore.js"></script>
+        <script src="/static/js/vendor/bootstrap.js"></script>        
         <script>
             function drawMapImage(canvas, data, scale, opacity) {
                 opacity = opacity || 255;
