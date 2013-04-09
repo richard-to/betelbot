@@ -24,25 +24,33 @@
         }
 
         h4 {
-            color:#999;
-            font-weight:normal;           
+            color: #666;
+            font-weight: normal;           
         }
 
         label {
-            color: #999;
+            color: #888;
+            font-weight:bold;
         }
 
         canvas {
             margin: auto;
-            width:600px;
-            display:block;
+            width: 600px;
+            display: block;
         }
 
         .container-map {
-            background:#f9f9f9;
-            border:1px solid #efefef;
+            background: #f9f9f9;
+            border: 1px solid #efefef;
         }
        
+        .form-betelbot .control-label {
+            text-align: left;
+        }
+
+        .form-betelbot .controls {
+            text-align: right;
+        }        
         </style>
     </head>
     <body>
@@ -58,25 +66,90 @@
                     </div>
                 </div>
                 <div class="span4">
-                    <div class="well well-small">
-                        <button type="button" class="btn btn-inverse">Connect to server</button>
+                    <div class="alert alert-warning">
+                        Please wait. Connecting to server.
                     </div>
-                    <div class="well well-small">
-                        <label>Betelbot</label>
-                        <div class="btn-group" data-toggle="buttons-radio">
-                            <button type="button" class="btn">On</button>
-                            <button type="button" class="btn">Off</button>
+                    <form class="form-horizontal form-betelbot">
+                        
+                        <div class="well well-small">
+                            <label class="control-label">Betelbot</label>
+                            <div class="controls">
+                                <div class="btn-group" data-toggle="buttons-radio">
+                                    <button type="button" class="btn" data-value="1">On</button>
+                                    <button type="button" class="btn active" data-value="1">Off</button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="well well-small">
-                        <label>Autonomous Mode</label>
-                        <div class="btn-group" data-toggle="buttons-radio">
-                            <button type="button" class="btn">On</button>
-                            <button type="button" class="btn">Off</button>
-                        </div>  
-                    </div>
+
+                        <div class="well well-small">
+                            <label class="control-label">Autonomous Mode</label>
+                            <div class="controls">
+                                <div class="btn-group" data-toggle="buttons-radio">
+                                    <button type="button" class="btn" data-value="1">On</button>
+                                    <button type="button" class="btn active" data-value="0">Off</button>
+                                </div>
+                            </div>  
+                        </div>
+
+                        <div class="well well-small">
+                            <label>Controls</label>
+                            <div class="btn-group">
+                                <button type="button" class="btn disabled" data-value="h"><i class="icon-arrow-left"></i></button>
+                                <button type="button" class="btn disabled" data-value="j"><i class="icon-arrow-down"></i></button>
+                                <button type="button" class="btn disabled" data-value="k"><i class="icon-arrow-up"></i></button>
+                                <button type="button" class="btn disabled" data-value="l"><i class="icon-arrow-right"></i></button>
+                            </div>  
+                        </div>
+
+                        <div class="well well-small">
+                            <label class="control-label">Route</label>
+                            <div class="controls">
+                                <div class="btn-group">
+                                    <button type="button" class="btn">Edit</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h4>Map Settings</h4> 
+                        
+                        <div class="well well-small">
+
+                            <div class="control-group">
+                                <label class="control-label">Gridlines</label>
+                                <div class="controls">
+                                    <div class="btn-group" data-toggle="buttons-radio">
+                                        <button type="button" class="btn active" data-value="1">On</button>
+                                        <button type="button" class="btn" data-value="0">Off</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="control-group">                            
+                                <label class="control-label">Route</label>
+                                <div class="controls">
+                                    <div class="btn-group" data-toggle="buttons-radio">
+                                        <button type="button" class="btn active" data-value="1">On</button>
+                                        <button type="button" class="btn" data-value="0">Off</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="control-group">                            
+                                <label class="control-label">Particles</label>
+                                <div class="controls">
+                                    <div class="btn-group" data-toggle="buttons-radio">
+                                        <button type="button" class="btn active" data-value="1">On</button>
+                                        <button type="button" class="btn" data-value="0">Off</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                    </form>                                        
                 </div>
             </div>
+
         </div>
         
         <script src="/static/js/vendor/jquery.js"></script>
@@ -299,31 +372,40 @@
             var canvas = document.getElementById('map');
             var context = canvas.getContext('2d');
 
+            var ws = null;
             var map = null;
             var path = null;
             var particles = null;
 
             $.get('/static/data/map.json', function(data) {
-
                 map = data;
                 refreshCanvas(context, canvas, map, path, particles);
-
-                var ws = new WebSocket("ws://localhost:8889/socket");
-            
-                ws.onmessage = function(event) {
-                    var response = JSON.parse(event.data);
-                    switch(response.method) {
-                        case 'particle':
-                            particles = response.params[0];
-                            refreshCanvas(context, canvas, map, path, particles);
-                        break;
-                        case 'path':
-                            path = response.params[0];
-                            refreshCanvas(context, canvas, map, path, particles);
-                        break;
-                    }
-                }
             });
+
+            ws = new WebSocket("ws://localhost:8889/socket");
+
+            ws.onopen = function() {
+            
+            };
+
+            ws.onclose = function() {
+
+            };
+
+            ws.onmessage = function(event) {
+                var response = JSON.parse(event.data);
+                switch(response.method) {
+                    case 'particle':
+                        particles = response.params[0];
+                        refreshCanvas(context, canvas, map, path, particles);
+                    break;
+                    case 'path':
+                        path = response.params[0];
+                        refreshCanvas(context, canvas, map, path, particles);
+                    break;
+                };
+            };
+
         </script>
     </body>
 </html>
