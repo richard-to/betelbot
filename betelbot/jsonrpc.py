@@ -7,7 +7,7 @@ from tornado.netutil import TCPServer
 from util import Connection
 
 # Betelbot servers and clients communicate using JSON-RPC 2.0.
-# 
+#
 # JSON-RPC 2.0 was chosen for its simpicity and compactness, compared to XML-RPC.
 # Compatibility with web interfaces was another benefit of using this protocol.
 #
@@ -45,16 +45,16 @@ class Error(object):
 class Encoder(object):
     # Implements a barebones JSON-RPC 2.0 interface for sending messages.
     #
-    # The encoder does not check the validity of params received. The params 
+    # The encoder does not check the validity of params received. The params
     # will be blindly encoded into JSON.
-    # 
-    # For instance, it is the responsibility of the user to not pass in None 
+    #
+    # For instance, it is the responsibility of the user to not pass in None
     # as a value for the id param.
     #
     # Batch requests are not currently supported.
     #
     # By default the encoder cannot encode complex objects correctly. The json
-    # module only supports basic python types unless the JSONEncoder class is 
+    # module only supports basic python types unless the JSONEncoder class is
     # extended.
 
     VERSION = "2.0"
@@ -72,7 +72,7 @@ class Encoder(object):
         # - Method params can be in positional or named, ie. list or dict format.
 
         msg = {
-            Key.ID: id,        
+            Key.ID: id,
             Key.METHOD : method}
         if params:
             msg[Key.PARAMS] = params
@@ -84,14 +84,14 @@ class Encoder(object):
         # - An id and result are required.
 
         return self.encode({
-            Key.ID: id, 
+            Key.ID: id,
             Key.RESULT: result})
 
     def error(self, id, error):
         # Encodes a JSON object to be sent as an error response to a request.
         #
         # - An id and error are required
-        # - An error is an object with code and message params. 
+        # - An error is an object with code and message params.
         # - See Error for default error codes.
 
         return self.encode({
@@ -101,7 +101,7 @@ class Encoder(object):
     def notification(self, method, *params):
         # Encodes a JSON object to be sent as a notification.
         #
-        # Notification do not need ids since they do not expect 
+        # Notification do not need ids since they do not expect
         # a response. If a response is needed, use a request.
         #
         # - Method name is required.
@@ -113,33 +113,33 @@ class Encoder(object):
         return self.encode(msg)
 
     def encode(self, msg):
-        # Helper that encodes dict into json and adds jsonrpc version param, 
+        # Helper that encodes dict into json and adds jsonrpc version param,
         # which is required by JSON-RPC 2.0.
         #
         # This method should only be used privately since it does not check
         # that a valid message is provided.
-        
+
         msg[Key.JSONRPC] = self.VERSION
         return json.dumps(msg, cls=self.jsonEncoder)
 
 
 class IdIncrement(object):
-    # Generate auto incrementing ids. Not the best option, 
+    # Generate auto incrementing ids. Not the best option,
     # but this will do for now.
     #
     # Ids are not guaranteed to be unique.
-    # 
+    #
     # - If increment is set to 0 then the id will be the same each time.
-    # - If multiple instances use the same parameters, then they will 
+    # - If multiple instances use the same parameters, then they will
     #   generate the same sequence of ids.
 
     def __init__(self, start=1, prefix='', increment=1):
         # Defaults to generating the following sequence: 1, 2, 3,...
-        # 
-        # This can be changed by adding a prefix, changing the start 
+        #
+        # This can be changed by adding a prefix, changing the start
         # number, and or changing the increment value.
         #
-        # Assuming a prefix equal to "PREFIX" and a start of 1, then 
+        # Assuming a prefix equal to "PREFIX" and a start of 1, then
         # the first id will be PREFIX1".
 
         self.start = start
@@ -155,6 +155,11 @@ class IdIncrement(object):
 
 
 class JsonRpcServer(TCPServer):
+
+    PARAM_CONNECTION = 'connection'
+    PARAM_ENCODER = 'encoder'
+    PARAM_IDINCREMENT = 'idincrement'
+
     # Extend Tornado TCPServer to act as JSON-RPC server.
     #
     # Additions:
@@ -164,11 +169,11 @@ class JsonRpcServer(TCPServer):
     # - Add onInit method to add custom initializations.
     # - Add setData method. This data will be passed as kwargs to every new connection.
 
-    def __init__(self, io_loop=None, ssl_options=None, **kwargs):       
+    def __init__(self, io_loop=None, ssl_options=None, **kwargs):
         TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options)
-        self.connection = kwargs.pop('connection', JsonRpcConnection)
-        self.encoder = kwargs.pop('encoder', Encoder())
-        self.idincrement = kwargs.pop('idincrement', IdIncrement())        
+        self.connection = kwargs.pop(JsonRpcServer.PARAM_CONNECTION, JsonRpcConnection)
+        self.encoder = kwargs.pop(JsonRpcServer.PARAM_ENCODER, Encoder())
+        self.idincrement = kwargs.pop(JsonRpcServer.PARAM_IDINCREMENT, IdIncrement())
         self.data = {}
         self.onInit(**kwargs)
 
@@ -179,54 +184,54 @@ class JsonRpcServer(TCPServer):
         self.data = kwargs
 
     def handle_stream(self, stream, address):
-        self.connection(stream, address, encoder=self.encoder, 
+        self.connection(stream, address, encoder=self.encoder,
             idincrement=self.idincrement, **self.data)
 
 
 class JsonRpcConnection(Connection):
-    # Extend Connection object to work with JsonRpc.
+    # Extend Connection object to work with JSON-RPC.
     #
-    # Main additions are jsonrpc encoder and an implementation 
+    # Main additions are jsonrpc encoder and an implementation
     # for onRead method that dispatches to various methodHandler
     # callbacks.
 
     def __init__(self, stream, address, terminator='\0', **kwargs):
-        self.encoder = kwargs.pop('encoder', Encoder())
-        self.idincrement = kwargs.pop('idincrement', IdIncrement())
+        self.encoder = kwargs.pop(JsonRpcServer.PARAM_ENCODER, Encoder())
+        self.idincrement = kwargs.pop(JsonRpcServer.PARAM_IDINCREMENT, IdIncrement())
         self.methodHandlers = {}
         self.responseHandlers = {}
 
         super(JsonRpcConnection, self).__init__(stream, address, terminator, **kwargs)
 
     def onRead(self, data):
-        # When data is received parse json message and call 
+        # When data is received parse json message and call
         # corresponding method handler.
-        
+
         self.readHandler(data)
         self.read()
 
     def readHandler(self, data):
         # Generic way to handle notifications, requests, and responses to the server/client.
-        # 
+        #
         # This allows the dictionary of handler methods to be set in the onInit method.
         #
         # - methodHandlers handle notifications/requests
         # - responseHandlers handle responses
-        
+
         msg = json.loads(data.strip(self.terminator))
         id = msg.get(Key.ID, None)
         method = msg.get(Key.METHOD, None)
 
         if method in self.methodHandlers:
-            self.methodHandlers[method](msg)   
+            self.methodHandlers[method](msg)
         elif id in self.responseHandlers:
             self.responseHandlers[id](msg)
-            del self.responseHandlers[id]        
+            del self.responseHandlers[id]
 
 
 class ClientConnection(JsonRpcConnection):
     # Extends Connection class to handle a JSON-RPC notification or request.
-    # 
+    #
     # Connections are best created from the Client class in the util module.
     #
     # - If a notification is sent, then the connection closes immediately.
@@ -238,10 +243,10 @@ class ClientConnection(JsonRpcConnection):
 
         self.logInfo('Sending "{}" notification'.format(method))
         self.write(self.encoder.notification(method, *params))
-        self.close() 
+        self.close()
 
     def request(self, callback, method, *params):
-        # Sends a request. This method is nonblocking, so a callback 
+        # Sends a request. This method is nonblocking, so a callback
         # is necessary to handle the eventual response.
         #
         # Only one request can be made per connection in this class.
@@ -250,24 +255,24 @@ class ClientConnection(JsonRpcConnection):
         if self.responseHandlers:
             self.logInfo('Only 1 request can be sent per connection')
         else:
-            self.logInfo('Sending "{}" request'.format(method))            
-            id = self.idincrement.id()        
+            self.logInfo('Sending "{}" request'.format(method))
+            id = self.idincrement.id()
             self.responseHandlers[id] = lambda msg: self.handleResponse(msg, method, callback)
-            self.write(self.encoder.request(id, method, *params)) 
+            self.write(self.encoder.request(id, method, *params))
 
     def handleResponse(self, msg, method, callback):
-        # Handles responses. Also need to close connection in 
-        # the case of long running callbacks. This will prevent 
+        # Handles responses. Also need to close connection in
+        # the case of long running callbacks. This will prevent
         # the connection from being closed immediately.
-        
+
         self.logInfo('Received "{}" response'.format(method))
         self.close()
         result = msg.get(Key.RESULT, None)
-        if result is not None:       
+        if result is not None:
             callback(result)
 
     def onRead(self, data):
-        # Handles response from server by calling specified 
+        # Handles response from server by calling specified
         # callback
 
         self.readHandler(data)
