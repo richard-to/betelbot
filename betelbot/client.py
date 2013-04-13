@@ -15,29 +15,24 @@ class BetelbotClientConnection(JsonRpcConnection):
     # Betelbot client connections are persistent tcp connections
     # that send/receive messages from Betelbot server using JSON-RPC 2.0.
     #
-    # In other words is a peer-to-peer connection, which may not be part of 
-    # the JSON-RPC 2.0 protocol.
-    #
     # Supported operations:
     # - Publish info to topics
     # - Subscribe to topics
     # - Register a service on server
     # - Locate a registered service
     #
-    # If service requests/notifications are required, use the connection class
-    # in jsonrpc module.
-    
+    # Once a service is located, those operations become supported and
+    # can be invoked the same as built-in operations.
+
     def onInit(self, **kwargs):
-        # For the BetelbotClientConnections, a few handlers need to be initialized.
-        #
-        # - subscription handlers are manage subscriber callbacks
+        # - subscription handlers manage subscriber callbacks
         # - method handlers currently only handle the NotifySub method
 
         self.logInfo('Client connected')
         self.subscriptionHandlers = {}
         self.methodHandlers = {
             BetelbotMethod.NOTIFYSUB: self.handleNotifySub
-        }        
+        }
 
     def publish(self, topic, *params):
         # Sends a "publish" notification to the server.
@@ -50,9 +45,10 @@ class BetelbotClientConnection(JsonRpcConnection):
     def subscribe(self, topic, callback=None):
         # Sends a "subscribe" notification to the server.
         #
-        # Anytime data gets published to the topic, client will be notified 
+        # Anytime data gets published to the topic, client will be notified
         # and the specified callback will be invoked.
-        self.logInfo('Subscribing to topic "{}"'.format(topic)) 
+
+        self.logInfo('Subscribing to topic "{}"'.format(topic))
         if topic not in self.subscriptionHandlers:
             self.subscriptionHandlers[topic] = []
             self.write(self.encoder.notification(BetelbotMethod.SUBSCRIBE, topic))
@@ -64,14 +60,19 @@ class BetelbotClientConnection(JsonRpcConnection):
         # The subscription handler will send this data along to local
         # subscribers.
         #
-        # The reason that there can be multiple subscribers to the same 
-        # message is in the case of a web server that has multiple websocket
-        # connections.
+        # The client can subscribe to the same topic multiple times and be
+        # linked to different callbacks. If the callback no longer exists,
+        # then it is ignored and removed from the callback list.
+        #
+        # The above case is useful for websocket connections that will be
+        # sharing a single client. This allows each connection to receive
+        # the callback and also can handle the case if a websocket connection
+        # is disconnected.
 
         params = msg.get(jsonrpc.Key.PARAMS, None)
-        if len(params) > 1:          
+        if len(params) > 1:
             topic = params[0]
-            data = params[1:]          
+            data = params[1:]
             if topic in self.subscriptionHandlers:
                 self.logInfo('Received subscription notification for "{}"'.format(topic))
                 disconnected = []
@@ -91,24 +92,24 @@ class BetelbotClientConnection(JsonRpcConnection):
         # Currently services are just methods rather than a set of methods.
         #
         # Multiple services can be registered by the server by registering
-        # a method at a time.
+        # one method at a time.
 
-        self.logInfo('Registering service "{}"'.format(method))          
+        self.logInfo('Registering service "{}"'.format(method))
         self.write(self.encoder.notification(BetelbotMethod.REGISTER, method, port, host))
 
     def locate(self, callback, method):
         # Locates the address of a service if it does not exist
         #
         # The callback will return True if found and False if not. In the case
-        # that the service has been located, the callback is called immediately.
+        # that the service has already been located, the callback is called immediately.
 
         if self.hasService(method) is False:
-            self.logInfo('Locating to service "{}"'.format(method))            
+            self.logInfo('Locating to service "{}"'.format(method))
             id = self.idincrement.id()
             self.responseHandlers[id] = lambda msg: self.handleLocateResponse(callback, method, msg)
             self.write(self.encoder.request(id, BetelbotMethod.LOCATE, method))
         else:
-            self.logInfo('Service "{}" already located'.format(method))            
+            self.logInfo('Service "{}" already located'.format(method))
             callback(True)
 
     def handleLocateResponse(self, callback, method, msg):
@@ -116,15 +117,13 @@ class BetelbotClientConnection(JsonRpcConnection):
         # invoked so that we can add the service to the client.
         #
         # Services are individual clients that create their own connections.
-        # These connections send a request and then close the connection once a 
+        # These connections send a request and then close the connection once a
         # response is received.
         #
-        # Service methods are dynamically added to BetelbotClientConnection 
+        # Service methods are dynamically added to BetelbotClientConnection
         # and can be called like a regular method.
         #
         # Example: conn.search(callback, [1,2], [2,3])
-        #
-        # Afterwards the user callback will be invoked with True/False.
 
         result = msg.get(jsonrpc.Key.RESULT, None)
         if result and len(result) == 2:
@@ -136,22 +135,22 @@ class BetelbotClientConnection(JsonRpcConnection):
             callback(False)
 
     def hasService(self, method):
-        # Helper method to test if a 
-        
+        # Helper method to test if a service methdod exists.
+
         return hasattr(self.__class__, method) and callable(getattr(self.__class__, method))
-    
+
     def addService(self, method, client):
         # A service is dynamically added to BetelbotClientConnection, so
-        # the method can be called naturally.
+        # the method can be called as a normal method.
 
         self.logInfo('Adding service "{}"'.format(method))
 
         def request(self, callback, *params):
             conn = client.connect()
-            conn.request(callback, method, *params) 
+            conn.request(callback, method, *params)
 
         request.__name__ = method
-        setattr(self.__class__, request.__name__, request)          
+        setattr(self.__class__, request.__name__, request)
 
 
 def main():
