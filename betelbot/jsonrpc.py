@@ -156,6 +156,7 @@ class IdIncrement(object):
 
 class JsonRpcServer(TCPServer):
 
+    # Accepted kwargs params
     PARAM_CONNECTION = 'connection'
     PARAM_ENCODER = 'encoder'
     PARAM_IDINCREMENT = 'idincrement'
@@ -238,10 +239,16 @@ class ClientConnection(JsonRpcConnection):
     # - If a request is sent, connection closes when a response is received.
     # - A timeout parameter could be useful.
 
+    # Log message templates
+    LOG_NOTIFICATION = 'Sending "{}" notification'
+    LOG_WARN_REQUEST_THROTTLE = 'Only 1 request can be sent per connection'
+    LOG_REQUEST_SEND = 'Sending "{}" request'
+    LOG_RESPONSE_RECEIVED = 'Received "{}" response'
+
     def notification(self, method, *params):
         # Sends a notification to server and closes connection.
 
-        self.logInfo('Sending "{}" notification'.format(method))
+        self.logInfo(ClientConnection.LOG_NOTIFICATION.format(method))
         self.write(self.encoder.notification(method, *params))
         self.close()
 
@@ -253,9 +260,9 @@ class ClientConnection(JsonRpcConnection):
         # If another request needs to be made, create a new connection.
 
         if self.responseHandlers:
-            self.logInfo('Only 1 request can be sent per connection')
+            self.logInfo(ClientConnection.LOG_WARN_REQUEST_THROTTLE)
         else:
-            self.logInfo('Sending "{}" request'.format(method))
+            self.logInfo(ClientConnection.LOG_REQUEST_SEND.format(method))
             id = self.idincrement.id()
             self.responseHandlers[id] = lambda msg: self.handleResponse(msg, method, callback)
             self.write(self.encoder.request(id, method, *params))
@@ -265,7 +272,7 @@ class ClientConnection(JsonRpcConnection):
         # the case of long running callbacks. This will prevent
         # the connection from being closed immediately.
 
-        self.logInfo('Received "{}" response'.format(method))
+        self.logInfo(ClientConnection.LOG_RESPONSE_RECEIVED.format(method))
         self.close()
         result = msg.get(Key.RESULT, None)
         if result is not None:
