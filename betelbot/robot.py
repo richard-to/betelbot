@@ -11,66 +11,49 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
-from config import JsonConfig
-from topic import cmdTopic, moveTopic, senseTopic
-from util import BetelBotClient, signalHandler
+from client import BetelbotClientConnection
+from config import JsonConfig, DictConfig
+from topic.default import CmdTopic, MoveTopic, SenseTopic
+from util import Client, Connection, signalHandler
 
 
-class BetelBotDriver(TCPServer):
+class BetelbotDriver(TCPServer):
+
+    # Log messages
+    LOG_SERVER_RUNNING = 'BetelBot Driver is running'
+
+    # Data params for Betelbot driver
+    PARAM_CLIENT = 'client'
 
     def __init__(self, client, io_loop=None, ssl_options=None, **kwargs):
-        logging.info('BetelBot Driver is running')
+        logging.info(BetelbotDriver.LOG_SERVER_RUNNING)
         TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options, **kwargs)
-        self.client = client
+        self.data = DictConfig({BetelbotDriver.PARAM_CLIENT: client}, extend=True)
 
     def handle_stream(self, stream, address):
-        BetelBotDriverConnection(stream, address, self.client)
+        BetelbotDriverConnection(stream, address, self.data)
 
 
-class BetelBotDriverConnection(object):
+class BetelbotDriverConnection(Connection):
 
-    streamSet = set([])
+    # Log messages
+    LOG_CONNECTED = 'Betelbot connected'
+    LOG_RECEIVED = 'Received data'
 
-    def __init__(self, stream, address, client, terminator='\0'):
-        self.address = address
-        self.logInfo('BetelBot connected')
-        self.terminator = terminator
-        self.stream = stream
-        self.stream.set_close_callback(self.onClose)
-        self.stream.read_until(self.terminator, self.onReadLine)
-        self.streamSet.add(self.stream)
+    def onInit(self):
+        self.logInfo(BetelbotDriverConnection.LOG_CONNECTED)
+        self.cmdTopic = CmdTopic()
+        self.moveTopic = MoveTopic()
+        self.client = data.client
+        self.client.subscribe(self.cmdTopic.id, self.onCmdForBot)
+        self.read()
 
-        self.client = client
-        self.client.subscribe(cmdTopic.id, self.onCmdForBot)
-
-    def write(self, data):
-        self.stream.write(data, self.onWriteComplete)
-
-    def onReadLine(self, data):
-        self.logInfo('Received data')
+    def onRead(self, data):
+        self.logInfo(BetelbotDriverConnection.LOG_RECEIVED)
         tokens = data.strip().split(" ")
-
         if tokens[0] == 'm':
-            self.client.publish(moveTopic.id, tokens[1])
-        elif tokens[0] == 's':
-            color = 'green' if int(tokens[1]) > 30 else 'red'
-            self.client.publish(senseTopic.id, color)
-
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)
-
-    def onWriteComplete(self):
-        self.logInfo('Sending command')
-        if not self.stream.reading():
-            self.stream.read_until(self.terminator, self.onReadLine)
-
-    def onClose(self):
-        self.logInfo('BetelBot disconnected')
-        self.streamSet.remove(self.stream)
-
-    def logInfo(self, msg):
-        dt = datetime.now().strftime("%m-%d-%y %H:%M")
-        logging.info('[%s, %s]%s', self.address[0], dt, msg)
+            self.client.publish(self.moveTopic.id, tokens[1])
+        self.read()
 
     def onCmdForBot(self, topic, data=None):
         self.write(data[0])
@@ -84,9 +67,10 @@ def main():
     logger = logging.getLogger('')
     logger.setLevel(cfg.general.logLevel)
 
-    client = BetelBotClient('', cfg.server.port)
+    client = Client('', cfg.server.port, BetelbotClientConnection)
+    conn = client.connect()
 
-    server = BetelBotDriver(client)
+    server = BetelbotDriver(client)
     server.listen(cfg.robot.port)
 
     IOLoop.instance().start()
