@@ -24,11 +24,21 @@ class BetelbotClientConnection(JsonRpcConnection):
     # Once a service is located, those operations become supported and
     # can be invoked the same as built-in operations.
 
+    # Log messages
+    LOG_CLIENT_CONNECT = 'Client connected'
+    LOG_PUBLISH = 'Publishing to topic "{}"'
+    LOG_SUBSCRIBE = 'Subscribing to topic "{}"'
+    LOG_SUBSCRIBE_NOTIFY = 'Received subscription notification for "{}"'
+    LOG_REGISTER = 'Registering service "{}"'
+    LOG_LOCATE = 'Locating service "{}"'
+    LOG_ALREADY_LOCATED = 'Service "{}" already located'
+    LOG_ADD_SERVICE = 'Adding service "{}"'
+
     def onInit(self, **kwargs):
         # - subscription handlers manage subscriber callbacks
         # - method handlers currently only handle the NotifySub method
 
-        self.logInfo('Client connected')
+        self.logInfo(BetelbotClientConnection.LOG_CLIENT_CONNECT)
         self.subscriptionHandlers = {}
         self.methodHandlers = {
             BetelbotMethod.NOTIFYSUB: self.handleNotifySub
@@ -39,7 +49,7 @@ class BetelbotClientConnection(JsonRpcConnection):
         #
         # Params are the data to be published to subscribers of topic.
 
-        self.logInfo('Publishing to topic "{}"'.format(topic))
+        self.logInfo(BetelbotClientConnection.PUBLISH.format(topic))
         self.write(self.encoder.notification(BetelbotMethod.PUBLISH, topic, *params))
 
     def subscribe(self, topic, callback=None):
@@ -48,7 +58,7 @@ class BetelbotClientConnection(JsonRpcConnection):
         # Anytime data gets published to the topic, client will be notified
         # and the specified callback will be invoked.
 
-        self.logInfo('Subscribing to topic "{}"'.format(topic))
+        self.logInfo(BetelbotClientConnection.SUBSCRIBE.format(topic))
         if topic not in self.subscriptionHandlers:
             self.subscriptionHandlers[topic] = []
             self.write(self.encoder.notification(BetelbotMethod.SUBSCRIBE, topic))
@@ -74,7 +84,7 @@ class BetelbotClientConnection(JsonRpcConnection):
             topic = params[0]
             data = params[1:]
             if topic in self.subscriptionHandlers:
-                self.logInfo('Received subscription notification for "{}"'.format(topic))
+                self.logInfo(BetelbotClientConnection.LOG_SUBSCRIBE_NOTIFY.format(topic))
                 disconnected = []
                 for subscriber in self.subscriptionHandlers[topic]:
                     try:
@@ -94,7 +104,7 @@ class BetelbotClientConnection(JsonRpcConnection):
         # Multiple services can be registered by the server by registering
         # one method at a time.
 
-        self.logInfo('Registering service "{}"'.format(method))
+        self.logInfo(BetelbotClientConnection.LOG_REGISTER.format(method))
         self.write(self.encoder.notification(BetelbotMethod.REGISTER, method, port, host))
 
     def locate(self, callback, method):
@@ -104,12 +114,12 @@ class BetelbotClientConnection(JsonRpcConnection):
         # that the service has already been located, the callback is called immediately.
 
         if self.hasService(method) is False:
-            self.logInfo('Locating to service "{}"'.format(method))
+            self.logInfo(BetelbotClientConnection.LOG_LOCATE.format(method))
             id = self.idincrement.id()
             self.responseHandlers[id] = lambda msg: self.handleLocateResponse(callback, method, msg)
             self.write(self.encoder.request(id, BetelbotMethod.LOCATE, method))
         else:
-            self.logInfo('Service "{}" already located'.format(method))
+            self.logInfo(BetelbotClientConnection.LOG_ALREADY_LOCATED.format(method))
             callback(True)
 
     def handleLocateResponse(self, callback, method, msg):
@@ -143,7 +153,7 @@ class BetelbotClientConnection(JsonRpcConnection):
         # A service is dynamically added to BetelbotClientConnection, so
         # the method can be called as a normal method.
 
-        self.logInfo('Adding service "{}"'.format(method))
+        self.logInfo(BetelbotClientConnection.LOG_ADD_SERVICE.format(method))
 
         def request(self, callback, *params):
             conn = client.connect()
