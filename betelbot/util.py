@@ -18,6 +18,7 @@ from datetime import datetime
 from tornado.iostream import IOStream
 from tornado.ioloop import IOLoop
 
+from config import DictConfig
 
 def loadMsgDictFromPkg(pkgFile):
     # Dynamically loads all classes in specified package and
@@ -99,7 +100,7 @@ class Client(object):
         self.port = port
         self.connection = connection
         self.terminator = terminator
-        self.kwargs = kwargs
+        self.data = DictConfig(kwargs)
 
     def connect(self):
         # Creates and returns a connection object for use.
@@ -107,7 +108,7 @@ class Client(object):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         stream = IOStream(sock)
         stream.connect((self.host, self.port))
-        return self.connection(stream, sock.getsockname(), self.terminator, **self.kwargs)
+        return self.connection(stream, sock.getsockname(), self.terminator, self.data)
 
 
 class Connection(object):
@@ -128,17 +129,18 @@ class Connection(object):
     # Message format for writing messages. Basically string followed by nullbyte.
     MSG_FORMAT = "{}{}"
 
-    def __init__(self, stream, address, terminator='\0', **kwargs):
+    def __init__(self, stream, address, terminator='\0', data):
         # Inits a connection object with a connected stream
 
+        self.data = data
         self.stream = stream
         self.address = address
         self.terminator = terminator
         self.stream.set_close_callback(self.onClose)
 
-        self.onInit(**kwargs)
+        self.onInit()
 
-    def onInit(self, **kwargs):
+    def onInit(self):
         return
 
     @abc.abstractmethod
