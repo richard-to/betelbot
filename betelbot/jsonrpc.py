@@ -164,8 +164,16 @@ class JsonRpcConnection(Connection):
     # callbacks.
 
     def __init__(self, stream, address, data, terminator='\0'):
-        self.encoder = data.encoder
-        self.idincrement = data.idincrement
+        try:
+            self.encoder = data.encoder
+        except AttributeError:
+            self.encoder = Encoder()
+
+        try:
+            self.idincrement = data.idincrement
+        except AttributeError:
+            self.idincrement = IdIncrement()
+
         self.methodHandlers = {}
         self.responseHandlers = {}
 
