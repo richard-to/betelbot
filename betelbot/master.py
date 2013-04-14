@@ -69,7 +69,7 @@ class BetelbotServer(JsonRpcServer):
 
 
     def onInit(self, **kwargs):
-        logging.info(BetlebotServer.LOG_SERVER_RUNNING)
+        logging.info(BetelbotServer.LOG_SERVER_RUNNING)
 
         topics = kwargs.get(BetelbotServer.PARAM_TOPICS, getTopics())
         topicSubscribers = dict((key,[]) for key in topics.keys())
