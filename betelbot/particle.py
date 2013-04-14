@@ -46,6 +46,13 @@ def convertToMotion(start, dest, gridSize):
 
 class Particle:
 
+    # Error messages
+    ERROR_ORIENTATION = 'Orientation must be in [0..2pi]'
+    ERROR_MOVE_BACKWARD = 'Robot cant move backwards'
+
+    # Particle to string format
+    REPR_STRING = '[y=%.6s x=%.6s orient=%.6s]'
+
     def __init__(self, length, grid, lookupTable):
         self.grid = grid
         self.lookupTable = lookupTable
@@ -69,7 +76,7 @@ class Particle:
 
     def set(self, y, x, orientation):
         if orientation < 0 or orientation >= 2.0 * pi:
-            raise ValueError, 'Orientation must be in [0..2pi]'
+            raise ValueError, Particle.ERROR_ORIENTATION
         self.x = float(x)
         self.y = float(y)
         self.orientation = float(orientation)
@@ -83,7 +90,7 @@ class Particle:
         turn, forward = motion
 
         if forward < 0:
-            raise ValueError, 'Robot cant move backwards'
+            raise ValueError, Particle.ERROR_BACKWARD_MOVE
 
         orientation = self.orientation + float(turn) + random.gauss(0.0, self.turnNoise)
         orientation %= 2 * pi
@@ -130,7 +137,7 @@ class Particle:
         return exp(- ((mu - x) ** 2) / (sigma ** 2) / 2.0) / sqrt(2.0 * pi * (sigma ** 2))
 
     def __repr__(self):
-        return '[y=%.6s x=%.6s orient=%.6s]' % (str(self.y), str(self.x),
+        return Particle.REPR_STRING % (str(self.y), str(self.x),
                                                 str(self.orientation))
 
 
@@ -195,22 +202,38 @@ class ParticleFilterMethod(object):
 
 class ParticleFilterServer(JsonRpcServer):
 
+    # Log messages
+    LOG_SERVER_RUNNING = 'ParticleFilter Server is running'
+
+    # Shared connection params
+    PARAM_MASTER_CONN= 'masterConn'
+    PARAM_PARTICLE= 'particleFilter'
+    PARAM_PARTICLE_TOPIC = 'particleTopic'
+
     def onInit(self, **kwargs):
-        logging.info('ParticleFilter Server is running')
-        self.data['masterConn'] = kwargs['masterConn']
-        self.data['particleFilter'] = kwargs['particleFilter']
-        self.data['particleTopic'] = kwargs['particleTopic']
+        logging.info(ParticleFilterServer.LOG_SERVER_RUNNING)
+
+        defaults = {
+            PathfinderServer.PARAM_MASTER_CONN: None,
+            PathfinderServer.PARAM_PARTICLE: None,
+            PathfinderServer.PARAM_PARTICLE_TOPIC, ParticleTopic()
+        }
+        self.data.update(defaults, True)
+        self.data.update(kwargs, False)
 
 
 class ParticleFilterConnection(JsonRpcConnection):
 
-    def onInit(self, **kwargs):
+    # Log messages
+    LOG_NEW_CONNECTION = 'Received a new connection'
+    LOG_UPDATE_FILTER = 'Updating particle filter'
 
-        self.logInfo('Received a new connection')
+    def onInit(self):
+        self.logInfo(ParticleFilterConnection.LOG_NEW_CONNECTION)
 
-        self.masterConn = kwargs['masterConn']
-        self.particleFilter = kwargs['particleFilter']
-        self.particleTopic = kwargs['particleTopic']
+        self.masterConn = self.data.masterConn
+        self.particleFilter = self.data.particleFilter
+        self.particleTopic = self.data.particleTopic
 
         self.methodHandlers = {
             ParticleFilterMethod.UPDATEPARTICLES: self.handleUpdateParticles
@@ -227,7 +250,7 @@ class ParticleFilterConnection(JsonRpcConnection):
         if id and len(params) == 2:
             motion, measurements = params
 
-            self.logInfo('Updating particle filter')
+            self.logInfo(ParticleFilterConnection.LOG_UPDATE_FILTER)
 
             self.particleFilter.update(motion, measurements)
             particles = self.particleFilter.getData()
