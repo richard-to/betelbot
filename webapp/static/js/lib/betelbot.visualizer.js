@@ -1,8 +1,18 @@
 (function(window, undefined) {
 
+    // Betelbot is the main namespace;
     var Betelbot = window.Betelbot || {};
+
+    // Visualizer is a child namespace of Betelbot module.
     var Visualizer = {};
 
+    // The renderer renders data from Betelbot to an HTML5 canvas.
+    //
+    // Currently can render data from:
+    //
+    // - map images
+    // - particle filter
+    // - path
     var Renderer = function(canvas, settings) {
         this.CONTEXT_2D = '2d';
         this.RGBA_BYTES = 4;
@@ -46,6 +56,7 @@
         this.context = canvas.getContext(this.CONTEXT_2D);
     };
 
+    // Renders map data to canvas
     Renderer.prototype.map = function(data) {
         var rgbaBytes = this.RGBA_BYTES;
         var alphaOpaque = this.OPAQUE_BYTE;
@@ -82,6 +93,7 @@
         context.putImageData(imageData, originX, originY);
     };
 
+    // Renders gridlines on map
     Renderer.prototype.grid = function() {
         var scale = this.settings.scale;
         var gridsize = this.settings.gridsize;
@@ -116,6 +128,7 @@
         });
     };
 
+    // Renders particles from particles filter on map
     Renderer.prototype.particles = function(particles) {
         var startAngle = this.ANGLE_0_RAD;
         var endAngle = this.ANGLE_2PI_RAD;
@@ -140,6 +153,7 @@
         });
     }
 
+    // Renders Betelbot path on map
     Renderer.prototype.linePath = function(path) {
         var startAngle = this.ANGLE_0_RAD;
         var endAngle = this.ANGLE_2PI_RAD;
@@ -185,6 +199,8 @@
         context.fill();
     };
 
+    // Renders histogram data on map.
+    // Histogram not implemented yet in Betelbot.
     Renderer.prototype.histogram = function(probabilities) {
         var scale = this.settings.scale;
         var gridsize = this.settings.gridsize;
@@ -208,6 +224,7 @@
         }
     };
 
+    // Redraws the map data. Used when new data is received from Betelbot server.
     Renderer.prototype.redraw = function(map, path, particles) {
         var scale = this.settings.scale;
         var canvas = this.canvas;
@@ -231,6 +248,8 @@
     Visualizer.Renderer = Renderer;
 
 
+    // Controller for Betelbot app.
+    // Main job is to send new data to renderer.
     var App = function(renderer, settings) {
         var defaults = {
             dataUri: '/static/data/map.json',
@@ -261,11 +280,15 @@
         };
     };
 
+    // Runs the app. Will load map and automatically connect to server.
     App.prototype.run = function() {
         this.loadmap();
         this.connect();
     };
 
+    // Loads the specified map data.
+    // Currently map data is a json file, but it
+    // would be more efficient to use a grayscale bitmap image.
     App.prototype.loadmap = function() {
         var self = this;
         $.get(self.settings.dataUri, function(data) {
@@ -274,16 +297,19 @@
         });
     };
 
+    // Handles the case when Betelbot server sends particle filter data.
     App.prototype.responseParticle = function(params) {
         this.particles = params[0];
         this.redraw();
     };
 
+    // Handles the case when server sends path data.
     App.prototype.responsePath = function(params) {
         this.path = params[0];
         this.redraw();
     };
 
+    // Redraw is called any time data is updated.
     App.prototype.redraw = function() {
         this.renderer.redraw(this.map, this.path, this.particles);
     };
