@@ -53,10 +53,13 @@ class Particle:
     # Particle to string format
     REPR_STRING = '[y=%.6s x=%.6s orient=%.6s]'
 
+    ANGLE_2PI_RAD = 2.0 * pi
+    DIGITS_ROUND = 15
+
     def __init__(self, length, grid, lookupTable):
         self.grid = grid
         self.lookupTable = lookupTable
-        self.delta = [[1, 0], [0, 1], [1, 0], [0, 1]]
+        self.delta = [[0, 1], [1, 0], [1, 0], [0, 1]]
         self.length = length
         self.forwardNoise  = 0.0
         self.turnNoise = 0.0
@@ -65,7 +68,7 @@ class Particle:
         self.x = 0.0
 
     def randomizePosition(self):
-        self.orientation = random.random() * 2.0 * pi
+        self.orientation = random.random() * Particle.ANGLE_2PI_RAD
         gridY = self.grid.shape[0] - 1
         gridX = self.grid.shape[1] - 1
         while True:
@@ -75,7 +78,7 @@ class Particle:
                 break
 
     def set(self, y, x, orientation):
-        if orientation < 0 or orientation >= 2.0 * pi:
+        if orientation < 0 or orientation >= Particle.ANGLE_2PI_RAD:
             raise ValueError, Particle.ERROR_ORIENTATION
         self.x = float(x)
         self.y = float(y)
@@ -93,11 +96,11 @@ class Particle:
             raise ValueError, Particle.ERROR_BACKWARD_MOVE
 
         orientation = self.orientation + float(turn) + random.gauss(0.0, self.turnNoise)
-        orientation %= 2 * pi
+        orientation %= Particle.ANGLE_2PI_RAD
 
         dist = float(forward) + random.gauss(0.0, self.forwardNoise)
-        x = self.x + (round(cos(orientation), 15) * dist)
-        y = self.y + (round(sin(orientation), 15) * dist)
+        x = self.x + (round(cos(orientation), Particle.DIGITS_ROUND) * dist)
+        y = self.y + (round(sin(orientation), Particle.DIGITS_ROUND) * dist)
         y %= self.grid.shape[0]
         x %= self.grid.shape[1]
         particle = Particle(self.length, self.grid, self.lookupTable)
@@ -134,7 +137,7 @@ class Particle:
         return prob
 
     def gaussian(self, mu, sigma, x):
-        return exp(- ((mu - x) ** 2) / (sigma ** 2) / 2.0) / sqrt(2.0 * pi * (sigma ** 2))
+        return exp(- ((mu - x) ** 2) / (sigma ** 2) / 2.0) / sqrt(Particle.ANGLE_2PI_RAD * (sigma ** 2))
 
     def __repr__(self):
         return Particle.REPR_STRING % (str(self.y), str(self.x),
