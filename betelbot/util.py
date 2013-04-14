@@ -8,7 +8,7 @@ import pkgutil
 import select
 import signal
 import socket
-import sys 
+import sys
 import termios
 import time
 import tty
@@ -20,13 +20,13 @@ from tornado.ioloop import IOLoop
 
 
 def loadMsgDictFromPkg(pkgFile):
-    # Dynamically loads all classes in specified package and 
+    # Dynamically loads all classes in specified package and
     # returns a dictionary with the key as the id value of the topic.
     #
     # This method should only be used in packages that contain only
     # topic and service typc classes.
 
-    msgs = {}    
+    msgs = {}
     modules = loadPkgModules(pkgFile)
     for module in modules:
         msgs.update(loadMsgDict(loadModuleClasses(module)))
@@ -37,7 +37,7 @@ def loadMsgDict(msgObj):
     # Dynamically load topic classes into a
     # dictionary.
     #
-    # Betelbot servers and clients use this dictionary to validate 
+    # Betelbot servers and clients use this dictionary to validate
     # topics.
     #
     # The key will be the id value of the topic class.
@@ -54,13 +54,13 @@ def loadPkgModules(pkgFile):
     #
     # This function requires the directory path of the package.
     #
-    # The main use case for this function is to load Topic definitions. 
-    # This means that the modules will be loaded from the Package 
-    # __init__.py file and will make it so the directory path can be retrieved 
+    # The main use case for this function is to load Topic definitions.
+    # This means that the modules will be loaded from the Package
+    # __init__.py file and will make it so the directory path can be retrieved
     # using the __file__ variable.
 
     pkgpath = os.path.dirname(pkgFile)
-    modules = [loader.find_module(name).load_module(name) 
+    modules = [loader.find_module(name).load_module(name)
         for loader, name, _ in pkgutil.iter_modules([pkgpath])]
     return modules
 
@@ -68,12 +68,12 @@ def loadPkgModules(pkgFile):
 def loadModuleClasses(module):
     # Dynamically get all classes in a module.
     #
-    # This function will only get classes defined a the specified module. 
-    # Classes that imported from within the module are ignored since that 
+    # This function will only get classes defined a the specified module.
+    # Classes that imported from within the module are ignored since that
     # would be the common use case.
     #
     # This returns a list of tuples with the format of (className, class)
-    
+
     return inspect.getmembers(module, lambda o: inspect.isclass(o) and o.__module__ == module.__name__)
 
 
@@ -93,6 +93,16 @@ class Client(object):
     #
     # - kwargs here is used to pass parameters to Connection objects
 
+    # Log message templates
+    LOG_MSG_SEND = 'Sending message'
+    LOG_MSG_LISTEN = 'Listening for messages'
+    LOG_CLIENT_QUIT = 'Client quit'
+    LOG_INFO_GENERIC = '[%s, %s]%s'
+    LOG_DATE_FORMAT = "%m-%d-%y %H:%M"
+
+    # Message format for writing messages. Basically string followed by nullbyte.
+    MSG_FORMAT = "{}{}"
+
     def __init__(self, host, port, connection, terminator='\0', **kwargs):
         self.host = host
         self.port = port
@@ -110,7 +120,7 @@ class Client(object):
 
 
 class Connection(object):
-    # Abstract connection class handles read, write, and close operations 
+    # Abstract connection class handles read, write, and close operations
     # on a connected socket. The onRead method needs to be implemented.
     #
     # Connection objects can be use for both server and client connections.
@@ -147,12 +157,12 @@ class Connection(object):
         #
         # Currently not sure how to handle closed connections.
         #
-        # One possibility is to call IOLoop.instance().stop(), 
+        # One possibility is to call IOLoop.instance().stop(),
         # but this only works for non-threaded case.
         #
         # Additionally this appraoch uses the global object.
         #
-        # Other drawbacks include non-persistent connections 
+        # Other drawbacks include non-persistent connections
         # where we don't necessarily want the loop closed.
         #
         # Maybe just catch the exception and exit gracefully in the
@@ -162,54 +172,60 @@ class Connection(object):
 
     def write(self, msg):
         # Sends msg to the server.
-        
-        self.logInfo('Sending message')        
-        self.stream.write("{}{}".format(msg, self.terminator), self.onWrite)
+
+        self.logInfo(Connection.LOG_MSG_SEND)
+        self.stream.write(Connection.MSG_FORMAT.format(msg, self.terminator), self.onWrite)
 
     def read(self):
-        # Reads data from the stream until encounters the specified 
+        # Reads data from the stream until encounters the specified
         # terminator character.
 
         if not self.stream.reading():
-            self.logInfo('Listening for messages')            
-            self.stream.read_until(self.terminator, self.onRead)         
+            self.logInfo(Connection.LOG_MSG_LISTEN)
+            self.stream.read_until(self.terminator, self.onRead)
 
     def close(self):
         # Disconnects client from server.
         if self.stream:
-            self.logInfo('Client quit')
-            self.stream.close()           
+            self.logInfo(Connection.LOG_CLIENT_QUIT)
+            self.stream.close()
 
     def logInfo(self, msg):
-        dt = datetime.now().strftime("%m-%d-%y %H:%M")
-        logging.info('[%s, %s]%s', self.address[0], dt, msg)   
+        dt = datetime.now().strftime(Connection.LOG_DATE_FORMAT)
+        logging.info(Connection.LOG_INFO_GENERIC, self.address[0], dt, msg)
 
 
 class NonBlockingTerm:
     # Makes it so terminal handles key input asynchronously.
-    # 
-    # The benefit is that we don't have to depend on readline, 
-    # which will block until input is recieved. This prevents 
-    # the terminal from receiving and outputting messages that may 
+    #
+    # The benefit is that we don't have to depend on readline,
+    # which will block until input is recieved. This prevents
+    # the terminal from receiving and outputting messages that may
     # be sent by Betelbot server.
     #
-    # This implementation only works in Linux and Mac since it uses OS specific 
+    # This implementation only works in Linux and Mac since it uses OS specific
     # functions. This has only been tested on a Mac.
+
+    def __init__(self, delay=0.3):
+        # Delay is the amount of time to wait before checking if there is
+        # key input data. This is to slowdown the infinite loop.
+
+        self.delay = delay
 
     def run(self, cb):
         # This method starts the non-blocking terminal.
-        # 
-        # A callback must be passed in to handle user key input. It will be called 
+        #
+        # A callback must be passed in to handle user key input. It will be called
         # for every key press.
         #
-        # This implementation does not handle multi-byte characters, such as 
+        # This implementation does not handle multi-byte characters, such as
         # arrow keys. A previous version of this code did handle this case, but
         # decided that it got kind of messy.
 
         signal.signal(signal.SIGINT, signalHandler)
-        
+
         old_settings = termios.tcgetattr(sys.stdin)
-        
+
         fd = sys.stdin.fileno()
         fl = fcntl.fcntl(fd, fcntl.F_GETFL)
         fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
@@ -217,7 +233,7 @@ class NonBlockingTerm:
         try:
             tty.setcbreak(sys.stdin.fileno())
             while True:
-                time.sleep(.3)
+                time.sleep(self.delay)
                 if self.hasData():
                     cb()
         finally:
