@@ -129,7 +129,7 @@ class Connection(object):
     # Message format for writing messages. Basically string followed by nullbyte.
     MSG_FORMAT = "{}{}"
 
-    def __init__(self, stream, address, terminator='\0', data):
+    def __init__(self, stream, address, data, terminator='\0'):
         # Inits a connection object with a connected stream
 
         self.data = data
