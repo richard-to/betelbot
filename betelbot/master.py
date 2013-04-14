@@ -137,7 +137,7 @@ class BetelbotConnection(JsonRpcConnection):
         if len(params) == 1:
             topic = params[0]
             if topic in self.topicSubscribers:
-                self.logInfo(BetelbotConnection.SUBSCRIBE.format(topic))
+                self.logInfo(BetelbotConnection.LOG_SUBSCRIBE.format(topic))
                 self.topicSubscribers[topic].append(self)
 
     def handleRegister(self, msg):
@@ -151,7 +151,7 @@ class BetelbotConnection(JsonRpcConnection):
         params = msg.get(jsonrpc.Key.PARAMS, None)
         if len(params) == 3:
             method, port, host = params
-            self.logInfo(BetelbotConnection.REGISTER.format(method))
+            self.logInfo(BetelbotConnection.LOG_REGISTER.format(method))
             self.services[method] = (port, host)
 
     def handleLocate(self, msg):
