@@ -272,12 +272,12 @@ class JsonRpcServer(TCPServer):
     # - Add setData method. This data will be passed as kwargs to every new connection.
 
     # Data params shared by connections
-    ENCODER = 'encoder'
-    IDINCREMENT = 'idincrement'
+    PARAM_ENCODER = 'encoder'
+    PARAM_IDINCREMENT = 'idincrement'
 
     def __init__(self, connection=JsonRpcConnection, io_loop=None, ssl_options=None, **kwargs):
         TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options)
-        defaults = {JsonRpcServer.ENCODER: Encoder(), JsonRpcServer.IDINCREMENT: IdIncrement()}
+        defaults = {JsonRpcServer.PARAM_ENCODER: Encoder(), JsonRpcServer.PARAM_IDINCREMENT: IdIncrement()}
         self.data = DictConfig(kwargs, defaults, False)
         self.connection = connection
         self.onInit(**kwargs)
