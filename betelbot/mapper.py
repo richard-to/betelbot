@@ -5,7 +5,7 @@ import json
 import cv2
 import numpy as np
 
-from jsonconfig import JsonConfig
+from config import JsonConfig
 
 def loadMap(imageLocation, gridSize):
     image = cv2.imread(imageLocation, cv2.CV_LOAD_IMAGE_GRAYSCALE)

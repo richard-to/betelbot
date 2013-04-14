@@ -16,7 +16,7 @@ from tornado.ioloop import IOLoop
 import jsonrpc
 
 from client import BetelbotClientConnection
-from jsonconfig import JsonConfig
+from config import JsonConfig
 from jsonrpc import JsonRpcServer, JsonRpcConnection
 from topic.default import ParticleTopic
 from util import Client, signalHandler

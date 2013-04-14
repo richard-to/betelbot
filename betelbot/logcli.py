@@ -6,7 +6,7 @@ import signal
 from tornado.ioloop import IOLoop
 
 from client import BetelbotClientConnection
-from jsonconfig import JsonConfig
+from config import JsonConfig
 from topic import getTopics
 from util import Client, signalHandler
 

@@ -11,7 +11,7 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
-from jsonconfig import JsonConfig
+from config import JsonConfig
 from topic import cmdTopic, moveTopic, senseTopic
 from util import BetelBotClient, signalHandler
 

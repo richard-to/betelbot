@@ -13,7 +13,7 @@ import numpy as np
 from tornado.ioloop import IOLoop
 
 from client import BetelbotClientConnection
-from jsonconfig import JsonConfig
+from config import JsonConfig
 from pathfinder import PathfinderMethod, PathfinderSearchType
 from particle import ParticleFilterMethod, convertToMotion
 from topic.default import CmdTopic, MoveTopic, SenseTopic

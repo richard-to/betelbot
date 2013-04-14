@@ -8,7 +8,7 @@ from tornado.ioloop import IOLoop
 import jsonrpc
 
 from client import BetelbotClientConnection
-from jsonconfig import JsonConfig
+from config import JsonConfig
 from topic.default import CmdTopic
 from util import NonBlockingTerm, Client
 
