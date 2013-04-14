@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import ConfigParser
 import json
 import logging
 import os
@@ -24,23 +23,23 @@ class BetelbotMethod:
     # Methods supported by Betelbot server
 
     # - Method: publish
-    # - Params: topic, data 
-    # - Type: Notification    
+    # - Params: topic, data
+    # - Type: Notification
     PUBLISH = 'publish'
 
     # - Type: Notification
     # - Method: subscribe
-    # - Params: topic     
+    # - Params: topic
     SUBSCRIBE = 'subscribe'
 
     # - Type: Notification
     # - Method: notifysub
-    # - Params: topic, data    
+    # - Params: topic, data
     NOTIFYSUB = 'notifysub'
 
     # - Type: Notification
     # - Method: register
-    # - Params: method, host, port 
+    # - Params: method, host, port
     REGISTER = 'register'
 
     # - Type: Request
@@ -64,19 +63,19 @@ class BetelbotServer(JsonRpcServer):
         self.data['topics'] = topics
         self.data['topicSubscribers'] = dict((key,[]) for key in topics.keys())
         self.data['services'] = {}
-        logging.info('BetelBot Server is running')        
+        logging.info('BetelBot Server is running')
 
 
 class BetelbotConnection(JsonRpcConnection):
     # BetelbotConnection is created when a client connects to the Betelbot server.
 
     def onInit(self, **kwargs):
-        # Initializes BetelbotConnection with method handlers for 
+        # Initializes BetelbotConnection with method handlers for
         # publish, subscribe, register, locate
         #
         # Adds dictionaries for registered topics and services.
 
-        self.logInfo('Received a new connection')        
+        self.logInfo('Received a new connection')
         self.topics = kwargs.get('topics', [])
         self.topicSubscribers = kwargs.get('topicSubscribers', {})
         self.services = kwargs.get('services', {})
@@ -87,11 +86,11 @@ class BetelbotConnection(JsonRpcConnection):
             BetelbotMethod.REGISTER: self.handleRegister,
             BetelbotMethod.LOCATE: self.handleLocate
         }
-        self.read()       
+        self.read()
 
     def handlePublish(self, msg):
         # Handles "publish" operation.
-        # 
+        #
         # Topics are validated for correct data types and then
         # data is sent to subscribers using notifySub operation.
 
@@ -99,31 +98,31 @@ class BetelbotConnection(JsonRpcConnection):
         if len(params) > 1:
             topic = params[0]
             data = params[1:]
-            topicObj = self.topics.get(topic, None)        
+            topicObj = self.topics.get(topic, None)
             if topicObj and topicObj.isValid(*data):
-                self.logInfo('Publishing to topic "{}"'.format(topic))                
+                self.logInfo('Publishing to topic "{}"'.format(topic))
                 subscribers = self.topicSubscribers[topic]
                 msg = self.encoder.notification(BetelbotMethod.NOTIFYSUB, topic, *data)
                 for subscriber in subscribers:
-                    subscriber.write(msg)                  
+                    subscriber.write(msg)
 
     def handleSubscribe(self, msg):
         # Handles "subscribe" operation.
-        # 
+        #
         # Subscribers are added to topic list so they can
         # be notified later.
 
         params = msg.get(jsonrpc.Key.PARAMS, None)
         if len(params) == 1:
-            topic = params[0]  
+            topic = params[0]
             if topic in self.topicSubscribers:
-                self.logInfo('Subscribing to topic "{}"'.format(topic))                
-                self.topicSubscribers[topic].append(self)                
+                self.logInfo('Subscribing to topic "{}"'.format(topic))
+                self.topicSubscribers[topic].append(self)
 
     def handleRegister(self, msg):
         # Handles "register" operation
         #
-        # Registers a service method. If another client registers an existing 
+        # Registers a service method. If another client registers an existing
         # method, then the host and port will be overwritten.
         #
         # Currently services can't be unregistered, even if the service disconnects
@@ -131,17 +130,17 @@ class BetelbotConnection(JsonRpcConnection):
         params = msg.get(jsonrpc.Key.PARAMS, None)
         if len(params) == 3:
             method, port, host = params
-            self.logInfo('Registering service "{}"'.format(method))                                   
-            self.services[method] = (port, host)         
+            self.logInfo('Registering service "{}"'.format(method))
+            self.services[method] = (port, host)
 
     def handleLocate(self, msg):
         # Handles "locate" operation
         #
         # The locate operation returns the address of service
-        
+
         id = msg.get(jsonrpc.Key.ID, None)
         params = msg.get(jsonrpc.Key.PARAMS, None)
-        
+
         if not id:
             # Send invalid params
             pass
@@ -149,43 +148,42 @@ class BetelbotConnection(JsonRpcConnection):
             # Send invalid params
             pass
         else:
-            method = params[0]            
-            self.logInfo('Locating service "{}"'.format(method))        
-            if method in self.services:          
+            method = params[0]
+            self.logInfo('Locating service "{}"'.format(method))
+            if method in self.services:
                 port, host = self.services[method]
                 self.write(self.encoder.response(id, port, host))
             else:
                 # Send invalid request
-                pass    
+                pass
 
     def onWrite(self):
         # After writing completes, need to make sure we start reading again.
         # Calls the read method to make sure.
 
         self.read()
- 
+
     def onClose(self):
-        # When a stream closes its connection, its subscriptions need 
+        # When a stream closes its connection, its subscriptions need
         # to be removed.
 
         for topic in self.topicSubscribers:
             if self in self.topicSubscribers[topic]:
-                self.logInfo('Unsubscribing client from topic "{}"'.format(topic))                  
-                self.topicSubscribers[topic].remove(self)                 
+                self.logInfo('Unsubscribing client from topic "{}"'.format(topic))
+                self.topicSubscribers[topic].remove(self)
 
 
 def main():
     signal.signal(signal.SIGINT, signalHandler)
 
-    config = ConfigParser.SafeConfigParser()
-    config.read('config/default.cfg')
+    cfg = JsonConfig()
 
     logger = logging.getLogger('')
-    logger.setLevel(config.get('general', 'log_level'))
+    logger.setLevel(cfg.general.logLevel)
 
     server = BetelbotServer(connection=BetelbotConnection, topics=getTopics())
-    server.listen(config.getint('server', 'port'))
-    
+    server.listen(cfg.server.port)
+
     IOLoop.instance().start()
 
 

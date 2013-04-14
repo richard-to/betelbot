@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import ConfigParser
 import logging
 import os
 import re
@@ -12,14 +11,15 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
+from jsonconfig import JsonConfig
 from topic import cmdTopic, moveTopic, senseTopic
 from util import BetelBotClient, signalHandler
 
 
 class BetelBotDriver(TCPServer):
- 
+
     def __init__(self, client, io_loop=None, ssl_options=None, **kwargs):
-        logging.info('BetelBot Driver is running')        
+        logging.info('BetelBot Driver is running')
         TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options, **kwargs)
         self.client = client
 
@@ -28,14 +28,14 @@ class BetelBotDriver(TCPServer):
 
 
 class BetelBotDriverConnection(object):
- 
+
     streamSet = set([])
 
     def __init__(self, stream, address, client, terminator='\0'):
         self.address = address
         self.logInfo('BetelBot connected')
         self.terminator = terminator
-        self.stream = stream        
+        self.stream = stream
         self.stream.set_close_callback(self.onClose)
         self.stream.read_until(self.terminator, self.onReadLine)
         self.streamSet.add(self.stream)
@@ -63,7 +63,7 @@ class BetelBotDriverConnection(object):
         self.logInfo('Sending command')
         if not self.stream.reading():
             self.stream.read_until(self.terminator, self.onReadLine)
-    
+
     def onClose(self):
         self.logInfo('BetelBot disconnected')
         self.streamSet.remove(self.stream)
@@ -79,16 +79,15 @@ class BetelBotDriverConnection(object):
 def main():
     signal.signal(signal.SIGINT, signalHandler)
 
-    config = ConfigParser.SafeConfigParser()
-    config.read('config/default.cfg')
+    cfg = JsonConfig()
 
     logger = logging.getLogger('')
-    logger.setLevel(config.get('general', 'log_level'))
+    logger.setLevel(cfg.general.logLevel)
 
-    client = BetelBotClient('', config.getint('server', 'port'))
+    client = BetelBotClient('', cfg.server.port)
 
     server = BetelBotDriver(client)
-    server.listen(config.getint('robot', 'port'))
+    server.listen(cfg.robot.port)
 
     IOLoop.instance().start()
 

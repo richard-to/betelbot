@@ -1,6 +1,5 @@
  #!/usr/bin/env python
 
-import ConfigParser
 import logging
 import signal
 import socket
@@ -12,6 +11,7 @@ from tornado import web, websocket
 import jsonrpc
 
 from client import BetelbotClientConnection
+from jsonconfig import JsonConfig
 from util import Client, signalHandler
 from topic.default import ParticleTopic, PathTopic
 
@@ -43,20 +43,19 @@ class VizualizerWebSocket(websocket.WebSocketHandler):
 def main():
     signal.signal(signal.SIGINT, signalHandler)
 
-    config = ConfigParser.SafeConfigParser()
-    config.read('config/default.cfg')
+    cfg = JsonConfig()
 
     logger = logging.getLogger('')
-    logger.setLevel(config.get('general', 'log_level'))
+    logger.setLevel(cfg.general.logLevel)
 
-    client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
+    client = Client('', cfg.server.port, BetelbotClientConnection)
     conn = client.connect()
 
     application = web.Application([
-        (r"/socket", VizualizerWebSocket, dict(conn=conn)),
+        (cfg.websocketServer.socketUri, VizualizerWebSocket, dict(conn=conn)),
     ])
 
-    application.listen(config.getint('websocket-server', 'port'))
+    application.listen(cfg.websocketServer.port)
     IOLoop.instance().start()
 
 

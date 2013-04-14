@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import ConfigParser
 import logging
 import random
 import signal
@@ -14,6 +13,7 @@ import numpy as np
 from tornado.ioloop import IOLoop
 
 from client import BetelbotClientConnection
+from jsonconfig import JsonConfig
 from pathfinder import PathfinderMethod, PathfinderSearchType
 from particle import ParticleFilterMethod, convertToMotion
 from topic.default import CmdTopic, MoveTopic, SenseTopic
@@ -25,7 +25,7 @@ class RoboSim(object):
 
     def __init__(self, conn, start, goal, grid, gridSize, lookupTable, delay=1):
         # Initializes RoboSim with certain parameters.
-        # 
+        #
         # - Conn is the connection with master Betelbot server.
         # - Start is an x,y coordinate that represents robot start position
         # - Goal is an x,y coordinate that represents robot destination
@@ -39,7 +39,7 @@ class RoboSim(object):
         self.gridSize = gridSize
         self.lookupTable = lookupTable
         self.delay = delay
-        
+
         self.moveTopic = MoveTopic()
         self.senseTopic = SenseTopic()
 
@@ -60,15 +60,15 @@ class RoboSim(object):
             dest = self.directions[self.moveIndex]
             if self.moveIndex > 0:
                 start = self.directions[self.moveIndex - 1]
-            else: 
+            else:
                 start = dest
             motion = convertToMotion(start, dest, self.gridSize)
 
-            y, x = self.path[self.moveIndex]   
+            y, x = self.path[self.moveIndex]
             measurements = self.sense(dest, y, x)
 
             self.moveIndex += 1
-            
+
             self.conn.publish(self.moveTopic.id, dest)
             self.conn.publish(self.senseTopic.id, measurements)
 
@@ -95,14 +95,14 @@ class RoboSim(object):
 
     def onLocateResponse(self, found=False):
         # If the getdirections method is found, then call service method.
-        
-        if (self.conn.hasService(PathfinderMethod.SEARCH) and 
+
+        if (self.conn.hasService(PathfinderMethod.SEARCH) and
                 self.conn.hasService(ParticleFilterMethod.UPDATEPARTICLES)):
-            self.conn.search(self.onSearchResponse, 
+            self.conn.search(self.onSearchResponse,
                 self.start, self.goal, PathfinderSearchType.BOTH)
 
     def onSearchResponse(self, result):
-        # Need to make this callback work asynchronously? 
+        # Need to make this callback work asynchronously?
         # Sleep method blocks everything.
 
         self.directions = result[1]
@@ -119,20 +119,19 @@ class RoboSim(object):
 def main():
     signal.signal(signal.SIGINT, signalHandler)
 
-    config = ConfigParser.SafeConfigParser()
-    config.read('config/default.cfg')
+    cfg = JsonConfig()
 
     logger = logging.getLogger('')
-    logger.setLevel(config.get('general', 'log_level'))
+    logger.setLevel(cfg.general.logLevel)
 
-    start = [int(num) for num in config.get('map', 'start').split(',')]
-    goal = [int(num) for num in config.get('map', 'goal').split(',')]
-    grid = cv2.imread(config.get('map-data', 'map'), cv2.CV_LOAD_IMAGE_GRAYSCALE)
-    lookupTable = np.load(config.get('map-data', 'dmap'))
-    gridSize = config.getint('map', 'gridSize')
-    delay = config.getint('robosim', 'delay')
+    start =  cfg.map.start
+    goal = cfg.map.goal
+    grid = cv2.imread(cfg.mapData.map, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+    lookupTable = np.load(cfg.mapData.dmap)
+    gridSize = cfg.map.gridsize
+    delay = cfg.robosim.delay
 
-    client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
+    client = Client('', cfg.server.port, BetelbotClientConnection)
     conn = client.connect()
 
     roboSim = RoboSim(conn, start, goal, grid, gridSize, lookupTable, delay)

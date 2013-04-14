@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 
-import ConfigParser
 import json
 
 import cv2
 import numpy as np
 
+from jsonconfig import JsonConfig
 
 def loadMap(imageLocation, gridSize):
     image = cv2.imread(imageLocation, cv2.CV_LOAD_IMAGE_GRAYSCALE)
     rows, cols = image.shape
     mRows = rows + rows % gridSize
-    mCols = cols + cols % gridSize  
+    mCols = cols + cols % gridSize
     map = np.zeros([mRows, mCols], dtype=np.uint8)
     map[0:rows, 0:cols] = image
     return map
@@ -21,15 +21,15 @@ def buildGrid(map, gridSize, openByte, wallByte):
     mRows, mCols = map.shape
     gRows = mRows / gridSize
     gCols = mCols / gridSize
-    lookupTable = [(i * gridSize, (i + 1) * gridSize - 1) 
-        for i in xrange(gRows if gRows > gCols else gCols)]      
+    lookupTable = [(i * gridSize, (i + 1) * gridSize - 1)
+        for i in xrange(gRows if gRows > gCols else gCols)]
     grid = np.zeros([gRows, gCols], dtype=np.uint8)
     for i in xrange(gRows):
         iStart, iEnd = lookupTable[i]
         for g in xrange(gCols):
             gStart, gEnd = lookupTable[g]
             grid[i, g] = wallByte if np.any(map[iStart:iEnd, gStart:gEnd] != openByte) else openByte
-    return grid 
+    return grid
 
 
 def calcDistanceMap(map, dMap, wallByte):
@@ -62,7 +62,7 @@ def calcDistanceMapRight(map, wallByte):
 def calcDistanceMapLeft(map, wallByte):
     rows, cols = map.shape
     dMap = np.tile(np.arange(cols, dtype=np.uint16), (rows, 1))
-    dMap = calcDistanceMap(np.fliplr(map), np.fliplr(dMap), wallByte)    
+    dMap = calcDistanceMap(np.fliplr(map), np.fliplr(dMap), wallByte)
     return np.fliplr(dMap)
 
 
@@ -74,7 +74,7 @@ def calcDistanceMapDown(map, wallByte):
 
 def calcDistanceMapUp(map, wallByte):
     rows, cols = map.shape
-    dMap = np.tile(np.arange(rows, dtype=np.uint16) , (cols, 1))    
+    dMap = np.tile(np.arange(rows, dtype=np.uint16) , (cols, 1))
     dMap = calcDistanceMap(np.fliplr(map.transpose()), np.fliplr(dMap), wallByte)
     return np.fliplr(dMap).transpose()
 
@@ -90,32 +90,34 @@ def mergeDistanceMaps(dmaps):
             for m in dmaps:
                 data[cols] = m[y, x]
                 cols += 1
-    return data 
+    return data
 
 
-def main():    
-    config = ConfigParser.SafeConfigParser()
-    config.read('config/default.cfg')
-    wallByte = config.getint('map', 'wall')
-    openByte = config.getint('map', 'open')
-    gridSize = config.getint('map', 'gridSize')
-    mapImage = config.get('map', 'image')
-    mapFiles = config._sections['map-data']
+def main():
+
+    cfg = JsonConfig()
+    wallByte = cfg.map.wall
+    openByte = cfg.map.open
+    gridSize = cfg.map.gridsize
+    mapImage = cfg.map.image
+    mapFile = cfg.mapData.map
+    gridFile= cfg.mapData.grid
+    dmapFile = cfg.mapData.dmap
 
     map = loadMap(mapImage, gridSize)
-    cv2.imwrite(mapFiles['map'], map)
+    cv2.imwrite(mapFile, map)
 
     grid = buildGrid(map, gridSize, openByte, wallByte)
-    cv2.imwrite(mapFiles['grid'], grid)
+    cv2.imwrite(gridFile, grid)
 
     dmaps = [
-        calcDistanceMapUp(map, wallByte),   
-        calcDistanceMapLeft(map, wallByte), 
+        calcDistanceMapUp(map, wallByte),
+        calcDistanceMapLeft(map, wallByte),
         calcDistanceMapDown(map, wallByte),
         calcDistanceMapRight(map, wallByte)
     ]
     dmap = mergeDistanceMaps(dmaps)
-    np.save(mapFiles['dmap'], dmap)
+    np.save(dmapFile, dmap)
 
 
 if __name__ == '__main__':

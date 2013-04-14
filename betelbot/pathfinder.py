@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import ConfigParser
 import json
 import logging
 import random
@@ -16,15 +15,16 @@ from tornado.netutil import TCPServer
 import jsonrpc
 
 from client import BetelbotClientConnection
+from jsonconfig import JsonConfig
 from jsonrpc import JsonRpcServer, JsonRpcConnection
 from topic.default import PathTopic, DirectionsTopic
 from util import Client, signalHandler
 
 
 def convertPathToDirections(path, cmds, delta):
-    # Converts an array of xy coordinates to Betelbot 
+    # Converts an array of xy coordinates to Betelbot
     # commands (hjkl).
-    
+
     directions = []
     current = path[0]
     moves = path[1:]
@@ -35,7 +35,7 @@ def convertPathToDirections(path, cmds, delta):
                 directions.append(cmds[i])
                 break
         current = move
-    return directions 
+    return directions
 
 
 def euclideanDistance(x, y, goalX, goalY):
@@ -54,32 +54,32 @@ class Pathfinder:
     #
     # The map is a 2-d numpy array with x-cols and y-rows.
     #
-    # For Betelbot, a grayscale map image is first converted to an array 
+    # For Betelbot, a grayscale map image is first converted to an array
     # with 255(white) being an open cell and 0(black) representing walls.
     #
     # Using no heuristic function will fallback to using djikstra.
     #
-    # The result of the search method will return an array of x,y coordinates that 
+    # The result of the search method will return an array of x,y coordinates that
     # lead to the goal.
     #
     # For now, the cost parameter has no effect and will always be set to 1.
 
     def __init__(self, grid, openCell, heuristic=None, cost=1):
         # Initializes the pathfinder with a map and heuristic function.
-        # 
-        # The open cell is a byte in decimal between 0-255. This represents 
+        #
+        # The open cell is a byte in decimal between 0-255. This represents
         # cells that can be visited. Everything is else is considered a wall or
         # obstacle.
         #
         # The grid is a numpy array that represents a map that is broken up into
-        # discrete cells. For instance, each 20x20 block in the regular map 
+        # discrete cells. For instance, each 20x20 block in the regular map
         # would be equal to a 1x1 pixel in the grid.
 
         self.grid = grid
         self.openCell = openCell
         self.heuristic = heuristic or self.noHeuristic
         self.delta = [[0, -1],[1, 0],[-1, 0],[0, 1]]
-        self.cost = 1     
+        self.cost = 1
 
     def search(self, start, goal):
         # Search for a path from start to goal.
@@ -87,10 +87,10 @@ class Pathfinder:
         #
         # The map and heuristic are given at initialization.
         #
-        # If no path is found, this method will return False. If one is found, 
+        # If no path is found, this method will return False. If one is found,
         # then array of x,y coordinates will be returned.
 
-        gridY, gridX = self.grid.shape        
+        gridY, gridX = self.grid.shape
         closed = np.zeros(self.grid.shape, bool)
         expand = np.empty(self.grid.shape)
         expand.fill(-1)
@@ -101,22 +101,22 @@ class Pathfinder:
         f = g + self.heuristic(x, y, goalY, goalX)
         open = [[g, y, x, f]]
         closed[y][x] = True
-        
+
         found = False
         resign = False
         count = 0
-        
+
         while not found and not resign:
             if len(open) == 0:
                 resign = True
                 return False
             else:
-                open = sorted(open, key=lambda visit: visit[3], reverse=True) 
+                open = sorted(open, key=lambda visit: visit[3], reverse=True)
                 next = open.pop()
                 g, y, x, f = next
                 expand[y][x] = count
                 count += 1
-                
+
                 if y == goalY and x == goalX:
                     found = True
                 else:
@@ -130,8 +130,8 @@ class Pathfinder:
                             open.append([g2, y2, x2, f])
                             closed[y2][x2] = True
 
-        py, px = goal  
-        path = [[py, px]] 
+        py, px = goal
+        path = [[py, px]]
         pathFinished = False
 
         while pathFinished == False:
@@ -142,20 +142,20 @@ class Pathfinder:
                 for pos in self.delta:
                     dx = px + pos[1]
                     dy = py + pos[0]
-                    if (dx >= 0 and dx < gridX and 
-                            dy >= 0 and dy < gridY and 
+                    if (dx >= 0 and dx < gridX and
+                            dy >= 0 and dy < gridY and
                             expand[dy][dx] >= 0 and expand[dy][dx] < count):
                         path.append([dy, dx])
                         px = dx
                         py = dy
                         break
-        path.reverse()                        
+        path.reverse()
         return path
 
     def noHeuristic(self, x, y, goalX, goalY):
-        # Dummy heuristic function for the case 
+        # Dummy heuristic function for the case
         # where no heuristic is given.
-        
+
         return 0
 
 
@@ -170,14 +170,14 @@ class PathfinderMethod:
     # - Type: Request
     # - Method: search
     # - Params: start[x,y], goal[x,y], PathfinderSearchType
-    # - Response: Depends on type   
+    # - Response: Depends on type
     SEARCH = 'search'
 
 
 class PathfinderServer(JsonRpcServer):
     # Pathfinder server is a service that finds a path from two points.
     #
-    # Currently a specific map cannot be chosen, only what is loaded by the 
+    # Currently a specific map cannot be chosen, only what is loaded by the
     # server on start up.
     #
     # Supported operations:
@@ -202,12 +202,12 @@ class PathfinderConnection(JsonRpcConnection):
 
         self.logInfo('Received a new connection')
 
-        self.masterConn = kwargs['masterConn']        
+        self.masterConn = kwargs['masterConn']
         self.pathfinder = kwargs['pathfinder']
         self.cmds = kwargs['cmds']
         self.pathTopic = kwargs.get('pathTopics', PathTopic())
         self.directionsTopic = kwargs.get('directionsTopic', DirectionsTopic())
-        
+
         self.methodHandlers = {
             PathfinderMethod.SEARCH: self.handleSearch,
         }
@@ -225,49 +225,49 @@ class PathfinderConnection(JsonRpcConnection):
 
         if id and len(params) == 3:
             start, goal, type = params
-            placeholders = start + goal            
-            
+            placeholders = start + goal
+
             self.logInfo('Searching for path from ({0},{1}) to ({2},{3})..'.format(*placeholders))
-            
+
             path = self.pathfinder.search(start, goal)
             directions = convertPathToDirections(path, self.cmds, self.pathfinder.delta)
-                       
+
             self.masterConn.publish(self.pathTopic.id, path)
-            self.masterConn.publish(self.directionsTopic.id, directions)            
-            
+            self.masterConn.publish(self.directionsTopic.id, directions)
+
             result = []
-            
+
             if type != PathfinderSearchType.DIRECTIONS:
                 result.append(path)
 
             if type != PathfinderSearchType.PATH:
                 result.append(directions)
-            
+
             self.write(self.encoder.response(id, *result))
 
-      
+
 def main():
 
     signal.signal(signal.SIGINT, signalHandler)
 
-    config = ConfigParser.SafeConfigParser()
-    config.read('config/default.cfg')
-    openByte = config.getint('map', 'open')
-    grid = cv2.imread(config.get('map-data', 'grid'), cv2.CV_LOAD_IMAGE_GRAYSCALE)
-    cmds = list(config.get('general', 'cmds'))
+    cfg = JsonConfig()
+
+    openByte = cfg.map.open
+    grid = cv2.imread(cfg.mapData.grid, cv2.CV_LOAD_IMAGE_GRAYSCALE)
+    cmds = list(cfg.general.cmds)
 
     logger = logging.getLogger('')
-    logger.setLevel(config.get('general', 'log_level'))
- 
+    logger.setLevel(cfg.general.logLevel)
+
     pathfinder = Pathfinder(grid, openByte, euclideanDistance)
 
-    serverPort = config.getint('pathfinder', 'port')
+    serverPort = cfg.pathfinder.port
 
-    client = Client('', config.getint('server', 'port'), BetelbotClientConnection)
+    client = Client('', cfg.server.port), BetelbotClientConnection)
     conn = client.connect()
     conn.register(PathfinderMethod.SEARCH, serverPort)
 
-    server = PathfinderServer(connection=PathfinderConnection, 
+    server = PathfinderServer(connection=PathfinderConnection,
         masterConn=conn, cmds=cmds, pathfinder=pathfinder)
     server.listen(serverPort)
 
