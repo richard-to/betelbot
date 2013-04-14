@@ -49,7 +49,7 @@ class BetelbotClientConnection(JsonRpcConnection):
         #
         # Params are the data to be published to subscribers of topic.
 
-        self.logInfo(BetelbotClientConnection.PUBLISH.format(topic))
+        self.logInfo(BetelbotClientConnection.LOG_PUBLISH.format(topic))
         self.write(self.encoder.notification(BetelbotMethod.PUBLISH, topic, *params))
 
     def subscribe(self, topic, callback=None):
@@ -58,7 +58,7 @@ class BetelbotClientConnection(JsonRpcConnection):
         # Anytime data gets published to the topic, client will be notified
         # and the specified callback will be invoked.
 
-        self.logInfo(BetelbotClientConnection.SUBSCRIBE.format(topic))
+        self.logInfo(BetelbotClientConnection.LOG_SUBSCRIBE.format(topic))
         if topic not in self.subscriptionHandlers:
             self.subscriptionHandlers[topic] = []
             self.write(self.encoder.notification(BetelbotMethod.SUBSCRIBE, topic))
