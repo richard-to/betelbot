@@ -18,6 +18,10 @@ from topic.default import ParticleTopic, PathTopic
 
 class VizualizerWebSocket(websocket.WebSocketHandler):
 
+    # Websocket log messages
+    LOG_CONNECTED = 'WebSocket connected. Subscribing to topics'
+    LOG_CLOSED = 'WebSocket closed'
+
     def initialize(self, conn):
         self.conn = conn
         self.particleTopic = ParticleTopic()
@@ -25,7 +29,7 @@ class VizualizerWebSocket(websocket.WebSocketHandler):
         self.encoder = jsonrpc.Encoder()
 
     def open(self):
-        logging.info('WebSocket connected. Subscribing to particle topic')
+        logging.info(VizualizerWebSocket.LOG_CONNECTED)
         self.conn.subscribe(self.particleTopic.id, self.onNotifySub)
         self.conn.subscribe(self.pathTopic.id, self.onNotifySub)
 
@@ -33,7 +37,7 @@ class VizualizerWebSocket(websocket.WebSocketHandler):
         self.write_message(message)
 
     def on_close(self):
-        logging.info('WebSocket closed.')
+        logging.info(VizualizerWebSocket.LOG_CLOSED)
 
     def onNotifySub(self, topic, data=None):
         msg = self.encoder.notification(topic, data[0])
