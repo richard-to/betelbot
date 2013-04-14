@@ -15,7 +15,7 @@ from tornado.netutil import TCPServer
 import jsonrpc
 
 from client import BetelbotClientConnection
-from jsonconfig import JsonConfig
+from config import JsonConfig
 from jsonrpc import JsonRpcServer, JsonRpcConnection
 from topic.default import PathTopic, DirectionsTopic
 from util import Client, signalHandler
@@ -183,16 +183,29 @@ class PathfinderServer(JsonRpcServer):
     # Supported operations:
     #
     # - search([xStart, yStart], [xGoal, yGoal]): array of (x,y) coordinates
-    # - directions([xStart, yStart], [xGoal, yGoal]): array of commands
+
+    # Log messages
+    LOG_SERVER_RUNNING = 'Pathfinder Server is running'
+
+    # Accepted kwargs params
+    PARAM_CONN= 'masterConn'
+    PARAM_PATHFINDER = 'pathfinder'
+    PARAM_CMDS = 'cmds'
+    PARAM_PATH_TOPIC = 'pathTopic'
+    PARAM_DIRECTIONS_TOPIC = 'directionsTopic'
 
     def onInit(self, **kwargs):
-        logging.info('Pathfinder Server is running')
-        self.data['masterConn'] = kwargs['masterConn']
-        self.data['pathfinder'] = kwargs['pathfinder']
-        self.data['cmds'] = kwargs['cmds']
+        logging.info(LOG_SERVER_RUNNING)
+        self.data[PathfinderServer.PARAM_CONN] = kwargs[PathfinderServer.PARAM_CONN]
+        self.data[PathfinderServer.PARAM_PATHFINDER] = kwargs[PathfinderServer.PARAM_PATHFINDER]
+        self.data[PathfinderServer.PARAM_CMDS] = kwargs[PathfinderServer.PARAM_CMDS]
 
 
 class PathfinderConnection(JsonRpcConnection):
+
+    # Log messages
+    LOG_NEW_CONNECTION = 'Received a new connection'
+    LOG_SEARCH = 'Searching for path from ({0},{1}) to ({2},{3})...'
 
     def onInit(self, **kwargs):
         # Initializes pathfinder connection
@@ -200,13 +213,13 @@ class PathfinderConnection(JsonRpcConnection):
         # Need to have a pathfinder and a cmds array to
         # map to pathfinder deltas.
 
-        self.logInfo('Received a new connection')
+        self.logInfo(PathfinderConnection.LOG_NEW_CONNECTION)
 
-        self.masterConn = kwargs['masterConn']
-        self.pathfinder = kwargs['pathfinder']
-        self.cmds = kwargs['cmds']
-        self.pathTopic = kwargs.get('pathTopics', PathTopic())
-        self.directionsTopic = kwargs.get('directionsTopic', DirectionsTopic())
+        self.masterConn = kwargs[PathfinderServer.PARAM_CONN]
+        self.pathfinder = kwargs[PathfinderServer.PARAM_PATHFINDER]
+        self.cmds = kwargs[PathfinderServer.PARAM_CMDS]
+        self.pathTopic = kwargs.get(PathfinderServer.PARAM_PATH_TOPIC, PathTopic())
+        self.directionsTopic = kwargs.get(PathfinderServer.PARAM_DIRECTIONS_TOPIC, DirectionsTopic())
 
         self.methodHandlers = {
             PathfinderMethod.SEARCH: self.handleSearch,
@@ -227,7 +240,7 @@ class PathfinderConnection(JsonRpcConnection):
             start, goal, type = params
             placeholders = start + goal
 
-            self.logInfo('Searching for path from ({0},{1}) to ({2},{3})..'.format(*placeholders))
+            self.logInfo(PathfinderConnection.LOG_SEARCH.format(*placeholders))
 
             path = self.pathfinder.search(start, goal)
             directions = convertPathToDirections(path, self.cmds, self.pathfinder.delta)
