@@ -6,6 +6,7 @@ from tornado.netutil import TCPServer
 
 from util import Connection
 
+
 # Betelbot servers and clients communicate using JSON-RPC 2.0.
 #
 # JSON-RPC 2.0 was chosen for its simpicity and compactness, compared to XML-RPC.
@@ -156,11 +157,6 @@ class IdIncrement(object):
 
 class JsonRpcServer(TCPServer):
 
-    # Accepted kwargs params
-    PARAM_CONNECTION = 'connection'
-    PARAM_ENCODER = 'encoder'
-    PARAM_IDINCREMENT = 'idincrement'
-
     # Extend Tornado TCPServer to act as JSON-RPC server.
     #
     # Additions:
@@ -170,23 +166,22 @@ class JsonRpcServer(TCPServer):
     # - Add onInit method to add custom initializations.
     # - Add setData method. This data will be passed as kwargs to every new connection.
 
-    def __init__(self, io_loop=None, ssl_options=None, **kwargs):
+    # Data params shared by connections
+    ENCODER = 'encoder'
+    IDINCREMENT = 'idincrement'
+
+    def __init__(self, connection=JsonRpcConnection, io_loop=None, ssl_options=None, **kwargs):
         TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options)
-        self.connection = kwargs.pop(JsonRpcServer.PARAM_CONNECTION, JsonRpcConnection)
-        self.encoder = kwargs.pop(JsonRpcServer.PARAM_ENCODER, Encoder())
-        self.idincrement = kwargs.pop(JsonRpcServer.PARAM_IDINCREMENT, IdIncrement())
-        self.data = {}
+        defaults = {JsonRpcServer.ENCODER: Encoder(), JsonRpcServer.IDINCREMENT: IdIncrement()}
+        self.data = DictConfig(kwargs, defaults, False)
+        self.connection = connection
         self.onInit(**kwargs)
 
     def onInit(self, **kwargs):
         return
 
-    def setData(self, **kwargs):
-        self.data = kwargs
-
     def handle_stream(self, stream, address):
-        self.connection(stream, address, encoder=self.encoder,
-            idincrement=self.idincrement, **self.data)
+        self.connection(stream, address, data=self.data)
 
 
 class JsonRpcConnection(Connection):
@@ -196,13 +191,13 @@ class JsonRpcConnection(Connection):
     # for onRead method that dispatches to various methodHandler
     # callbacks.
 
-    def __init__(self, stream, address, terminator='\0', **kwargs):
-        self.encoder = kwargs.pop(JsonRpcServer.PARAM_ENCODER, Encoder())
-        self.idincrement = kwargs.pop(JsonRpcServer.PARAM_IDINCREMENT, IdIncrement())
+    def __init__(self, stream, address, terminator='\0', data):
+        self.encoder = data.encoder
+        self.idincrement = data.idincrement
         self.methodHandlers = {}
         self.responseHandlers = {}
 
-        super(JsonRpcConnection, self).__init__(stream, address, terminator, **kwargs)
+        super(JsonRpcConnection, self).__init__(stream, address, terminator, data)
 
     def onRead(self, data):
         # When data is received parse json message and call
