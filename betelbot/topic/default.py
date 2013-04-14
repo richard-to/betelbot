@@ -9,15 +9,23 @@ class CmdTopic(ValueTopic):
     # Vi controls are used to avoid multibyte arrow keys.
     #
     # CommandTopic is slightly different than the MoveTopic.
-    
+
     def __init__(self):
-        super(CmdTopic, self).__init__('cmd', ('h', 'j', 'k', 'l', 's'), 1)
+
+        self.left = 'h'
+        self.down = 'j'
+        self.up = 'k'
+        self.right = 'l'
+        self.stop = 's'
+        self.keys = (self.left, self.down, self.up, self.right, self.stop)
+
+        super(CmdTopic, self).__init__('cmd', self.keys, 1)
 
 
 class MoveTopic(CmdTopic):
-    # The MoveTopic differs from the CmdTopic in that this topic is 
+    # The MoveTopic differs from the CmdTopic in that this topic is
     # published by the Robot after it completes its move.
-    
+
     def __init__(self):
         super(MoveTopic, self).__init__()
         self.id = 'move'
@@ -25,7 +33,7 @@ class MoveTopic(CmdTopic):
 
 class SenseTopic(object):
     # Placeholder PathTopic for now.
-    # 
+    #
     # Best way to validate?
 
     def __init__(self):
@@ -37,7 +45,7 @@ class SenseTopic(object):
 
 class PathTopic(object):
     # Placeholder PathTopic for now.
-    # 
+    #
     # Best way to validate?
 
     def __init__(self):
@@ -49,7 +57,7 @@ class PathTopic(object):
 
 class DirectionsTopic(object):
     # Placeholder DirectionsTopic for now.
-    # 
+    #
     # Best way to validate?
 
     def __init__(self):
@@ -64,4 +72,4 @@ class ParticleTopic(object):
         self.id = 'particle'
 
     def isValid(self, *data):
-        return True                
+        return True
