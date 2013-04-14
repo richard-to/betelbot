@@ -74,6 +74,7 @@ class Particle:
     # Some constants
     ANGLE_2PI_RAD = 2.0 * pi
     DIGITS_ROUND = 15
+    DELTA = [[0, 1], [1, 0], [1, 0], [0, 1]]
 
     def __init__(self, length, grid, lookupTable):
         # Initializes particle with reference to map and lookup table data.
@@ -84,7 +85,7 @@ class Particle:
 
         self.grid = grid
         self.lookupTable = lookupTable
-        self.delta = [[0, 1], [1, 0], [1, 0], [0, 1]]
+        self.delta = Particle.DELTA
         self.length = length
         self.forwardNoise  = 0.0
         self.turnNoise = 0.0
