@@ -79,7 +79,7 @@ class Pathfinder:
         self.openCell = openCell
         self.heuristic = heuristic or self.noHeuristic
         self.delta = [[0, -1],[1, 0],[-1, 0],[0, 1]]
-        self.cost = 1
+        self.cost = cost
 
     def search(self, start, goal):
         # Search for a path from start to goal.
