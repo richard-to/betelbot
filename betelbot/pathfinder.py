@@ -195,14 +195,14 @@ class PathfinderServer(JsonRpcServer):
     PARAM_DIRECTIONS_TOPIC = 'directionsTopic'
 
     def onInit(self, **kwargs):
-        logging.info(LOG_SERVER_RUNNING)
+        logging.info(PathfinderServer.LOG_SERVER_RUNNING)
 
         defaults = {
             PathfinderServer.PARAM_MASTER_CONN: None,
             PathfinderServer.PARAM_PATHFINDER: None,
             PathfinderServer.PARAM_CMDS: None,
-            PathfinderServer.PARAM_PATH_TOPIC, PathTopic(),
-            PathfinderServer.PARAM_DIRECTIONS_TOPIC, DirectionsTopic()
+            PathfinderServer.PARAM_PATH_TOPIC: PathTopic(),
+            PathfinderServer.PARAM_DIRECTIONS_TOPIC: DirectionsTopic()
         }
         self.data.update(defaults, True)
         self.data.update(kwargs, False)
@@ -283,7 +283,7 @@ def main():
 
     serverPort = cfg.pathfinder.port
 
-    client = Client('', cfg.server.port), BetelbotClientConnection)
+    client = Client('', cfg.server.port, BetelbotClientConnection)
     conn = client.connect()
     conn.register(PathfinderMethod.SEARCH, serverPort)
 
