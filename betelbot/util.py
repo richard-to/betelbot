@@ -94,7 +94,6 @@ class Client(object):
     #
     # - kwargs here is used to pass parameters to Connection objects
 
-
     def __init__(self, host, port, connection, terminator='\0', **kwargs):
         self.host = host
         self.port = port
@@ -108,7 +107,7 @@ class Client(object):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0)
         stream = IOStream(sock)
         stream.connect((self.host, self.port))
-        return self.connection(stream, sock.getsockname(), self.terminator, self.data)
+        return self.connection(stream, sock.getsockname(), self.data, self.terminator)
 
 
 class Connection(object):
