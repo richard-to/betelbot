@@ -222,11 +222,11 @@ class PathfinderConnection(JsonRpcConnection):
 
         self.logInfo(PathfinderConnection.LOG_NEW_CONNECTION)
 
-        self.masterConn = data.masterConn
-        self.pathfinder = data.pathfinder
-        self.cmds = data.cmds
-        self.pathTopic = data.pathTopic
-        self.directionsTopic = data.directionsTopic
+        self.masterConn = self.data.masterConn
+        self.pathfinder = self.data.pathfinder
+        self.cmds = self.data.cmds
+        self.pathTopic = self.data.pathTopic
+        self.directionsTopic = self.data.directionsTopic
 
         self.methodHandlers = {
             PathfinderMethod.SEARCH: self.handleSearch,
