@@ -59,14 +59,12 @@ class BetelbotServer(JsonRpcServer):
     # - Registers service methods
     # - Locates address of registered service methods for clients
 
-
     # Accepted kwargs params
     PARAM_TOPICS = 'topics'
     PARAM_TOPIC_SUBSCRIBERS = 'topicSubscribers'
 
     # Log messages
     LOG_SERVER_RUNNING = 'BetelBot Server is running'
-
 
     def onInit(self, **kwargs):
         logging.info(BetelbotServer.LOG_SERVER_RUNNING)
