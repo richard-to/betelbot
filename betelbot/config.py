@@ -19,7 +19,7 @@ class JsonConfig(object):
     # Config values can be any valid data. So you could have an object,
     # which could translate to a dict when loaded, etc.
 
-    DEFAULT_FILEPATH = 'config/config.json'
+    DEFAULT_FILEPATH = 'config/default.json'
 
     def __init__(self, filepath=None):
         filepath = filepath or JsonConfig.DEFAULT_FILEPATH
