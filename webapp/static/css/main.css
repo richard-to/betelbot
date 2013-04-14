@@ -1,0 +1,40 @@
+body {
+    background: #fcfcfc;
+    padding-top: 20px;
+    padding-bottom: 40px;
+}
+
+h1 {
+    color: #777;
+    font-size: 30px;
+    font-family: 'Quicksand', sans-serif;
+}
+
+h4 {
+    color: #666;
+    font-weight: normal;
+}
+
+label {
+    color: #888;
+    font-weight:bold;
+}
+
+canvas {
+    margin: auto;
+    width: 600px;
+    display: block;
+}
+
+.container-map {
+    background: #f9f9f9;
+    border: 1px solid #efefef;
+}
+
+.form-betelbot .control-label {
+    text-align: left;
+}
+
+.form-betelbot .controls {
+    text-align: right;
+}
