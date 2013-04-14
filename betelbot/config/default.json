@@ -1,8 +1,7 @@
 {
     "general": {
         "debug": 1,
-        "logLevel": 20,
-        "cmds": ["h", "j", "k", "l"]
+        "logLevel": 20
     },
     "server": {
         "port": 8888
