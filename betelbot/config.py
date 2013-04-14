@@ -22,7 +22,7 @@ class JsonConfig(object):
     DEFAULT_FILEPATH = 'config/config.json'
 
     def __init__(self, filepath=None):
-        filepath = filepath or Config.DEFAULT_FILEPATH
+        filepath = filepath or JsonConfig.DEFAULT_FILEPATH
         jsonData = open(filepath).read()
         data = json.loads(jsonData)
         for section in data:
