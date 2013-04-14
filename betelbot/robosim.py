@@ -15,7 +15,7 @@ from tornado.ioloop import IOLoop
 from client import BetelbotClientConnection
 from config import JsonConfig
 from pathfinder import PathfinderMethod, PathfinderSearchType
-from particle import ParticleFilterMethod, convertToMotion
+from particle import Particle, ParticleFilterMethod, convertToMotion
 from topic.default import CmdTopic, MoveTopic, SenseTopic
 from util import Client, signalHandler
 
@@ -23,7 +23,7 @@ from util import Client, signalHandler
 class RoboSim(object):
     # RoboSim simulates the real robot.
 
-    def __init__(self, conn, start, goal, grid, gridSize, lookupTable, delay=1):
+    def __init__(self, conn, start, goal, grid, gridsize, lookupTable, delay=1):
         # Initializes RoboSim with certain parameters.
         #
         # - Conn is the connection with master Betelbot server.
@@ -36,10 +36,11 @@ class RoboSim(object):
         self.start = start
         self.goal = goal
         self.grid = grid
-        self.gridSize = gridSize
+        self.gridsize = gridsize
         self.lookupTable = lookupTable
         self.delay = delay
-
+        self.delta = Particle.DELTA
+        self.cmdTopic = CmdTopic()
         self.moveTopic = MoveTopic()
         self.senseTopic = SenseTopic()
 
@@ -62,7 +63,7 @@ class RoboSim(object):
                 start = self.directions[self.moveIndex - 1]
             else:
                 start = dest
-            motion = convertToMotion(start, dest, self.gridSize)
+            motion = convertToMotion(self.cmdTopic, start, dest, self.gridsize)
 
             y, x = self.path[self.moveIndex]
             measurements = self.sense(dest, y, x)
@@ -75,12 +76,15 @@ class RoboSim(object):
             self.conn.updateparticles(self.onUpdateParticlesResponse, motion, measurements)
 
     def sense(self, direction, y, x):
-        delta = [[0, 1], [1, 0], [1, 0], [0, 1]]
-        directions = ['h', 'j', 'k', 'l']
+        # Fakes sense topic by using look up table
+
+        delta = self.delta
+        directions = self.cmdTopic.keys
         Z = []
         count = len(delta)
-        y = y * self.gridSize + self.gridSize/2
-        x = x * self.gridSize + self.gridSize/2
+        midpoint = self.gridsize/2
+        y = y * self.gridsize + midpoint
+        x = x * self.gridsize + midpoint
         index = y * self.grid.shape[1] * count + x * count
         for i in xrange(count):
             if direction != directions[i]:
@@ -128,13 +132,13 @@ def main():
     goal = cfg.map.goal
     grid = cv2.imread(cfg.mapData.map, cv2.CV_LOAD_IMAGE_GRAYSCALE)
     lookupTable = np.load(cfg.mapData.dmap)
-    gridSize = cfg.map.gridsize
+    gridsize = cfg.map.gridsize
     delay = cfg.robosim.delay
 
     client = Client('', cfg.server.port, BetelbotClientConnection)
     conn = client.connect()
 
-    roboSim = RoboSim(conn, start, goal, grid, gridSize, lookupTable, delay)
+    roboSim = RoboSim(conn, start, goal, grid, gridsize, lookupTable, delay)
     IOLoop.instance().start()
 
 
