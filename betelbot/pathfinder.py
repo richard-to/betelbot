@@ -188,7 +188,7 @@ class PathfinderServer(JsonRpcServer):
     LOG_SERVER_RUNNING = 'Pathfinder Server is running'
 
     # Accepted kwargs params
-    PARAM_CONN= 'masterConn'
+    PARAM_MASTER_CONN= 'masterConn'
     PARAM_PATHFINDER = 'pathfinder'
     PARAM_CMDS = 'cmds'
     PARAM_PATH_TOPIC = 'pathTopic'
@@ -196,9 +196,16 @@ class PathfinderServer(JsonRpcServer):
 
     def onInit(self, **kwargs):
         logging.info(LOG_SERVER_RUNNING)
-        self.data[PathfinderServer.PARAM_CONN] = kwargs[PathfinderServer.PARAM_CONN]
-        self.data[PathfinderServer.PARAM_PATHFINDER] = kwargs[PathfinderServer.PARAM_PATHFINDER]
-        self.data[PathfinderServer.PARAM_CMDS] = kwargs[PathfinderServer.PARAM_CMDS]
+
+        defaults = {
+            PathfinderServer.PARAM_MASTER_CONN: None,
+            PathfinderServer.PARAM_PATHFINDER: None,
+            PathfinderServer.PARAM_CMDS: None,
+            PathfinderServer.PARAM_PATH_TOPIC, PathTopic(),
+            PathfinderServer.PARAM_DIRECTIONS_TOPIC, DirectionsTopic()
+        }
+        self.data.update(defaults, True)
+        self.data.update(kwargs, False)
 
 
 class PathfinderConnection(JsonRpcConnection):
@@ -207,7 +214,7 @@ class PathfinderConnection(JsonRpcConnection):
     LOG_NEW_CONNECTION = 'Received a new connection'
     LOG_SEARCH = 'Searching for path from ({0},{1}) to ({2},{3})...'
 
-    def onInit(self, **kwargs):
+    def onInit(self):
         # Initializes pathfinder connection
         #
         # Need to have a pathfinder and a cmds array to
@@ -215,11 +222,11 @@ class PathfinderConnection(JsonRpcConnection):
 
         self.logInfo(PathfinderConnection.LOG_NEW_CONNECTION)
 
-        self.masterConn = kwargs[PathfinderServer.PARAM_CONN]
-        self.pathfinder = kwargs[PathfinderServer.PARAM_PATHFINDER]
-        self.cmds = kwargs[PathfinderServer.PARAM_CMDS]
-        self.pathTopic = kwargs.get(PathfinderServer.PARAM_PATH_TOPIC, PathTopic())
-        self.directionsTopic = kwargs.get(PathfinderServer.PARAM_DIRECTIONS_TOPIC, DirectionsTopic())
+        self.masterConn = data.masterConn
+        self.pathfinder = data.pathfinder
+        self.cmds = data.cmds
+        self.pathTopic = data.pathTopic
+        self.directionsTopic = data.directionsTopic
 
         self.methodHandlers = {
             PathfinderMethod.SEARCH: self.handleSearch,
