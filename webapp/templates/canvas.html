@@ -9,12 +9,12 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href='http://fonts.googleapis.com/css?family=Quicksand:300' rel='stylesheet' type='text/css'>
         <link href="/static/css/vendor/bootstrap.css" rel="stylesheet">
-        <!--<link href="/static/css/vendor/bootstrap-responsive.css" rel="stylesheet">-->       
+        <!--<link href="/static/css/vendor/bootstrap-responsive.css" rel="stylesheet">-->
         <style>
         body {
             background: #fcfcfc;
             padding-top: 20px;
-            padding-bottom: 40px;            
+            padding-bottom: 40px;
         }
 
         h1 {
@@ -25,7 +25,7 @@
 
         h4 {
             color: #666;
-            font-weight: normal;           
+            font-weight: normal;
         }
 
         label {
@@ -43,14 +43,14 @@
             background: #f9f9f9;
             border: 1px solid #efefef;
         }
-       
+
         .form-betelbot .control-label {
             text-align: left;
         }
 
         .form-betelbot .controls {
             text-align: right;
-        }        
+        }
         </style>
     </head>
     <body>
@@ -70,7 +70,7 @@
                         Please wait. Connecting to server.
                     </div>
                     <form class="form-horizontal form-betelbot">
-                        
+
                         <div class="well well-small">
                             <label class="control-label">Betelbot</label>
                             <div class="controls">
@@ -88,7 +88,7 @@
                                     <button type="button" class="btn" data-value="1">On</button>
                                     <button type="button" class="btn active" data-value="0">Off</button>
                                 </div>
-                            </div>  
+                            </div>
                         </div>
 
                         <div class="well well-small">
@@ -98,7 +98,7 @@
                                 <button type="button" class="btn disabled" data-value="j"><i class="icon-arrow-down"></i></button>
                                 <button type="button" class="btn disabled" data-value="k"><i class="icon-arrow-up"></i></button>
                                 <button type="button" class="btn disabled" data-value="l"><i class="icon-arrow-right"></i></button>
-                            </div>  
+                            </div>
                         </div>
 
                         <div class="well well-small">
@@ -110,8 +110,8 @@
                             </div>
                         </div>
 
-                        <h4>Map Settings</h4> 
-                        
+                        <h4>Map Settings</h4>
+
                         <div class="well well-small">
 
                             <div class="control-group">
@@ -124,7 +124,7 @@
                                 </div>
                             </div>
 
-                            <div class="control-group">                            
+                            <div class="control-group">
                                 <label class="control-label">Route</label>
                                 <div class="controls">
                                     <div class="btn-group" data-toggle="buttons-radio">
@@ -134,7 +134,7 @@
                                 </div>
                             </div>
 
-                            <div class="control-group">                            
+                            <div class="control-group">
                                 <label class="control-label">Particles</label>
                                 <div class="controls">
                                     <div class="btn-group" data-toggle="buttons-radio">
@@ -146,20 +146,20 @@
 
                         </div>
 
-                    </form>                                        
+                    </form>
                 </div>
             </div>
 
         </div>
-        
+
         <script src="/static/js/vendor/jquery.js"></script>
         <script src="/static/js/vendor/underscore.js"></script>
-        <script src="/static/js/vendor/bootstrap.js"></script>        
+        <script src="/static/js/vendor/bootstrap.js"></script>
         <script>
             function drawMapImage(canvas, data, scale, opacity) {
                 opacity = opacity || 255;
                 scale = scale || 1;
-                
+
                 var originX = 0;
                 var originY = 0;
                 var rgbaBytes = 4;
@@ -176,7 +176,7 @@
                             imageData.data[col++] = color;
                             imageData.data[col++] = color;
                             imageData.data[col++] = color;
-                            imageData.data[col++] = opacity; 
+                            imageData.data[col++] = opacity;
                         });
                     });
                 }
@@ -202,8 +202,8 @@
                     context.moveTo(n * scaledGridSize, originY);
                     context.lineTo(n * scaledGridSize, canvas.height);
                     context.stroke();
-                });     
-                
+                });
+
                 _(Math.floor(canvas.height / scaledGridSize) + 1).times(function(n) {
                     context.beginPath();
                     context.lineWidth = 1;
@@ -219,7 +219,7 @@
 
                 var radius = size * scale;
                 var scaledSize = size * scale;
-                var context = canvas.getContext('2d');          
+                var context = canvas.getContext('2d');
 
                 _.each(particles, function(element) {
                     context.beginPath();
@@ -228,7 +228,7 @@
                     context.fill();
                     context.lineWidth = 2;
                     context.strokeStyle = 'rgba(20,20,20,.4)';
-                    context.stroke();                           
+                    context.stroke();
                 });
             }
 
@@ -254,8 +254,8 @@
                 for (var y = 0; y < probabilities.length; ++y) {
                     for (var x = 0; x < probabilities[y].length; ++x) {
                         if (probabilities[y][x] != null) {
-                            context.fillText(probabilities[y][x], 
-                                gridSize + (x * scaledGridSize), 
+                            context.fillText(probabilities[y][x],
+                                gridSize + (x * scaledGridSize),
                                 gridSize + (y * scaledGridSize));
                         }
                     }
@@ -287,8 +287,8 @@
                             context.beginPath();
                             color = Math.floor(255 * probabilities[y][x]);
                             context.fillStyle = 'rgba(' + color + ', 0, 0, 1)';
-                            context.rect(x * scaledGridSize + 1, 
-                                y * scaledGridSize + 1, 
+                            context.rect(x * scaledGridSize + 1,
+                                y * scaledGridSize + 1,
                                 scaledGridSize - scale, scaledGridSize - scale);
                             context.fill();
                         }
@@ -308,7 +308,7 @@
                 for (i = 1; i < path.length; i++) {
                     var x1 = path[i - 1][1];
                     var y1 = path[i - 1][0];
-                    var x2 = path[i][1];                    
+                    var x2 = path[i][1];
                     var y2 = path[i][0];
 
                     context.beginPath();
@@ -330,43 +330,43 @@
                     path[path.length - 1][1] * scaledGridSize + scaledGridSize/2,
                     path[path.length - 1][0] * scaledGridSize + scaledGridSize/2, radius, 0, 2 * Math.PI, false);
                 context.fillStyle = lineColor;
-                context.fill();                     
+                context.fill();
             }
 
             function drawPath(canvas, path, gridSize, scale) {
                 scale = scale || 1;
                 gridSize = gridSize || 20;
-                
+
                 var scaledGridSize = gridSize * scale;
                 var context = canvas.getContext('2d');
 
                 context.fillStyle = 'rgba(100, 100, 100, .4)';
                 for (i = 0; i < path.length; i++) {
                     context.beginPath();
-                    context.rect(path[i][1] * scaledGridSize + 1, 
-                        path[i][0] * scaledGridSize + 1, 
+                    context.rect(path[i][1] * scaledGridSize + 1,
+                        path[i][0] * scaledGridSize + 1,
                         scaledGridSize - scale, scaledGridSize - scale);
                     context.fill();
-                }               
+                }
             }
 
             function refreshCanvas(context, canvas, map, path, particles) {
-                var scale = 2;                
-                
+                var scale = 2;
+
                 context.clearRect(0, 0, canvas.width, canvas.height);
 
                 if (map) {
                     drawMapImage(canvas, map, scale);
-                    drawGrid(canvas, 20, scale); 
+                    drawGrid(canvas, 20, scale);
                 }
 
                 if (path) {
-                    drawLinePath(canvas, path, 20, scale); 
+                    drawLinePath(canvas, path, 20, scale);
                 }
 
                 if (particles) {
-                    drawParticles(canvas, particles, scale, 6);    
-                }                
+                    drawParticles(canvas, particles, scale, 6);
+                }
             }
 
             var canvas = document.getElementById('map');
@@ -385,7 +385,7 @@
             ws = new WebSocket("ws://localhost:8889/socket");
 
             ws.onopen = function() {
-            
+
             };
 
             ws.onclose = function() {
