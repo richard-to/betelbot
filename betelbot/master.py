@@ -62,6 +62,7 @@ class BetelbotServer(JsonRpcServer):
     # Accepted kwargs params
     PARAM_TOPICS = 'topics'
     PARAM_TOPIC_SUBSCRIBERS = 'topicSubscribers'
+    PARAM_SERVICES = 'services'
 
     # Log messages
     LOG_SERVER_RUNNING = 'BetelBot Server is running'
@@ -73,7 +74,8 @@ class BetelbotServer(JsonRpcServer):
         topicSubscribers = dict((key,[]) for key in topics.keys())
         defaults = {
             BetelbotServer.PARAM_TOPICS: topics,
-            BetelbotServer.PARAM_TOPIC_SUBSCRIBERS: topicSubscribers
+            BetelbotServer.PARAM_TOPIC_SUBSCRIBERS: topicSubscribers,
+            BetelbotServer.PARAM_SERVICES: {}
         }
         self.data.update(defaults, True)
         self.data.update(kwargs, False)
@@ -99,7 +101,7 @@ class BetelbotConnection(JsonRpcConnection):
         self.logInfo(BetelbotConnection.LOG_NEW_CONNECTION)
         self.topics = self.data.topics
         self.topicSubscribers = self.data.topicSubscribers
-        self.services = {}
+        self.services = self.data.services
 
         self.methodHandlers = {
             BetelbotMethod.PUBLISH: self.handlePublish,
