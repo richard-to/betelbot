@@ -37,6 +37,16 @@ def onInput(conn, cmdTopic):
         conn.publish(cmdTopic.id, c)
 
 
+def printInstructions(cmdTopic):
+    # Prints Betelbot control instructions to console
+
+    print "Reading from keyboard"
+    print "---------------------------"
+    print "Use [{}, {}, {}, {}] to move and [{}] to stop.".format(
+            cmdTopic.left, cmdTopic.down, cmdTopic.up,
+            cmdTopic.right, cmdTopic.stop)
+
+
 def main():
     # Starts up a client connection to publish commands to Betelbot server.
     #
@@ -55,9 +65,7 @@ def main():
     thread.daemon = True
     thread.start()
 
-    print "Reading from keyboard"
-    print "---------------------------"
-    print "Use [h,j,k,l] to move and [s] to stop."
+    printInstructions(cmdTopic)
 
     term = NonBlockingTerm()
     term.run(lambda: onInput(conn, cmdTopic))
