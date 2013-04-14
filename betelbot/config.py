@@ -43,18 +43,22 @@ class ConfigSection(object):
 
 
 class DictConfig(object):
-    # Builds a config object from a data dict
-    # If flat is true, build a single level data class
-    # Otherwise the first level will be considered a section.
+    # Builds a flat data object from a dict
 
-    def __init__(self, data, flat=True):
-        if flat:
-            for key in data:
+    def __init__(self, data, defaults=None, extend=True):
+        if defaults:
+             self.update(defaults, True)
+        self.update(data, extend)
+
+    def update(self, data, extend=False):
+        # Updates the object's variables with
+        # a dictionary where keys represent variable names.
+        # If extend is false, data is only updated if the
+        # variable exists.
+
+        for key in data:
+            if extend or hasattr(self, key):
                 setattr(self, key, data[key])
-        else:
-            for section in data:
-                sectionData = ConfigSection(data[section])
-                setattr(self, section, sectionData)
 
 def main():
     pass
