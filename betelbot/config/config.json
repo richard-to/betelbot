@@ -1,0 +1,43 @@
+{
+    "general": {
+        "debug": 1,
+        "logLevel": 20,
+        "cmds": "hjkl"
+    },
+    "server": {
+        "port": 8888
+    },
+    "websocketServer": {
+        "port": 8889,
+        "socketUri": "/socket"
+    },
+    "robosim": {
+        "delay": 1
+    },
+    "robot": {
+        "port": 8890,
+        "length": 10
+    },
+    "pathfinder": {
+        "port": 8891
+    },
+    "map": {
+        "wall": 0,
+        "open": 255,
+        "gridsize": 20,
+        "start": [0, 15],
+        "goal": [15, 2],
+        "image": "maps/hallway/hallway.png"
+    },
+    "mapData": {
+        "map": "maps/hallway/map.png",
+        "grid": "maps/hallway/grid.png",
+        "dmap": "maps/hallway/dmap.npy"
+    },
+    "particle": {
+        "port": 8892,
+        "forwardnoise": 0.1,
+        "turnnoise": 0.2,
+        "sensenoise": 10.0
+    }
+}
