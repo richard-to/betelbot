@@ -8,6 +8,8 @@ import numpy as np
 from config import JsonConfig
 
 def loadMap(imageLocation, gridSize):
+    # Converts image file to numpy matrix
+
     image = cv2.imread(imageLocation, cv2.CV_LOAD_IMAGE_GRAYSCALE)
     rows, cols = image.shape
     mRows = rows + rows % gridSize
@@ -18,6 +20,10 @@ def loadMap(imageLocation, gridSize):
 
 
 def buildGrid(map, gridSize, openByte, wallByte):
+    # Scales map matrix down to discrete blocks specified by gridSize.
+    # If area has all open bytes, then it will be marked as an open byte.
+    # If area has all at least one wall byte, then it will be marked as a wall byte.
+
     mRows, mCols = map.shape
     gRows = mRows / gridSize
     gCols = mCols / gridSize
@@ -33,6 +39,8 @@ def buildGrid(map, gridSize, openByte, wallByte):
 
 
 def calcDistanceMap(map, dMap, wallByte):
+    # Calculates the distance from a pixel to a wall bytes for all pixels in map.
+
     sIndex = 0
     cIndex = None
     ndMap = dMap.copy()
@@ -54,12 +62,16 @@ def calcDistanceMap(map, dMap, wallByte):
 
 
 def calcDistanceMapRight(map, wallByte):
+    # Calculates distance to the right wall of map
+
     rows, cols = map.shape
     dMap = np.tile(np.arange(cols, dtype=np.uint16)[::-1], (rows, 1))
     return calcDistanceMap(map, dMap, wallByte)
 
 
 def calcDistanceMapLeft(map, wallByte):
+    # Calculates distance to the left wall of map
+
     rows, cols = map.shape
     dMap = np.tile(np.arange(cols, dtype=np.uint16), (rows, 1))
     dMap = calcDistanceMap(np.fliplr(map), np.fliplr(dMap), wallByte)
@@ -67,12 +79,16 @@ def calcDistanceMapLeft(map, wallByte):
 
 
 def calcDistanceMapDown(map, wallByte):
+    # Calculates distance to the south wall of map
+
     rows, cols = map.shape
     dMap = np.tile(np.arange(rows, dtype=np.uint16)[::-1] , (cols, 1))
     return calcDistanceMap(map.transpose(), dMap, wallByte).transpose()
 
 
 def calcDistanceMapUp(map, wallByte):
+    # Calculates distance to the north wall of map
+
     rows, cols = map.shape
     dMap = np.tile(np.arange(rows, dtype=np.uint16) , (cols, 1))
     dMap = calcDistanceMap(np.fliplr(map.transpose()), np.fliplr(dMap), wallByte)
@@ -80,6 +96,8 @@ def calcDistanceMapUp(map, wallByte):
 
 
 def mergeDistanceMaps(dmaps):
+    # Merges all distance maps into one large array (left, down, up, right)
+
     mapY, mapX = dmaps[0].shape
     count = len(dmaps)
     size = dmaps[0].size * count * count
@@ -94,7 +112,6 @@ def mergeDistanceMaps(dmaps):
 
 
 def main():
-
     cfg = JsonConfig()
     wallByte = cfg.map.wall
     openByte = cfg.map.open
@@ -111,9 +128,9 @@ def main():
     cv2.imwrite(gridFile, grid)
 
     dmaps = [
-        calcDistanceMapUp(map, wallByte),
         calcDistanceMapLeft(map, wallByte),
         calcDistanceMapDown(map, wallByte),
+        calcDistanceMapUp(map, wallByte),
         calcDistanceMapRight(map, wallByte)
     ]
     dmap = mergeDistanceMaps(dmaps)
