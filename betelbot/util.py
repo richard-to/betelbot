@@ -93,15 +93,6 @@ class Client(object):
     #
     # - kwargs here is used to pass parameters to Connection objects
 
-    # Log message templates
-    LOG_MSG_SEND = 'Sending message'
-    LOG_MSG_LISTEN = 'Listening for messages'
-    LOG_CLIENT_QUIT = 'Client quit'
-    LOG_INFO_GENERIC = '[%s, %s]%s'
-    LOG_DATE_FORMAT = "%m-%d-%y %H:%M"
-
-    # Message format for writing messages. Basically string followed by nullbyte.
-    MSG_FORMAT = "{}{}"
 
     def __init__(self, host, port, connection, terminator='\0', **kwargs):
         self.host = host
@@ -126,6 +117,16 @@ class Connection(object):
     # Connection objects can be use for both server and client connections.
 
     __metaclass__ = abc.ABCMeta
+
+    # Log message templates
+    LOG_MSG_SEND = 'Sending message'
+    LOG_MSG_LISTEN = 'Listening for messages'
+    LOG_CLIENT_QUIT = 'Client quit'
+    LOG_INFO_GENERIC = '[%s, %s]%s'
+    LOG_DATE_FORMAT = "%m-%d-%y %H:%M"
+
+    # Message format for writing messages. Basically string followed by nullbyte.
+    MSG_FORMAT = "{}{}"
 
     def __init__(self, stream, address, terminator='\0', **kwargs):
         # Inits a connection object with a connected stream
