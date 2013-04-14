@@ -4,6 +4,7 @@ import socket
 
 from tornado.netutil import TCPServer
 
+from config import DictConfig
 from util import Connection
 
 
@@ -155,35 +156,6 @@ class IdIncrement(object):
         return newId
 
 
-class JsonRpcServer(TCPServer):
-
-    # Extend Tornado TCPServer to act as JSON-RPC server.
-    #
-    # Additions:
-    #
-    # - Pass in a JSON-RPC Encoder via kwargs, otherwise default is used.
-    # - A connection object can be passed in. Defaults to JsonRpcConnection.
-    # - Add onInit method to add custom initializations.
-    # - Add setData method. This data will be passed as kwargs to every new connection.
-
-    # Data params shared by connections
-    ENCODER = 'encoder'
-    IDINCREMENT = 'idincrement'
-
-    def __init__(self, connection=JsonRpcConnection, io_loop=None, ssl_options=None, **kwargs):
-        TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options)
-        defaults = {JsonRpcServer.ENCODER: Encoder(), JsonRpcServer.IDINCREMENT: IdIncrement()}
-        self.data = DictConfig(kwargs, defaults, False)
-        self.connection = connection
-        self.onInit(**kwargs)
-
-    def onInit(self, **kwargs):
-        return
-
-    def handle_stream(self, stream, address):
-        self.connection(stream, address, data=self.data)
-
-
 class JsonRpcConnection(Connection):
     # Extend Connection object to work with JSON-RPC.
     #
@@ -191,13 +163,13 @@ class JsonRpcConnection(Connection):
     # for onRead method that dispatches to various methodHandler
     # callbacks.
 
-    def __init__(self, stream, address, terminator='\0', data):
+    def __init__(self, stream, address, data, terminator='\0'):
         self.encoder = data.encoder
         self.idincrement = data.idincrement
         self.methodHandlers = {}
         self.responseHandlers = {}
 
-        super(JsonRpcConnection, self).__init__(stream, address, terminator, data)
+        super(JsonRpcConnection, self).__init__(stream, address, data, terminator)
 
     def onRead(self, data):
         # When data is received parse json message and call
@@ -278,6 +250,35 @@ class ClientConnection(JsonRpcConnection):
         # callback
 
         self.readHandler(data)
+
+
+class JsonRpcServer(TCPServer):
+
+    # Extend Tornado TCPServer to act as JSON-RPC server.
+    #
+    # Additions:
+    #
+    # - Pass in a JSON-RPC Encoder via kwargs, otherwise default is used.
+    # - A connection object can be passed in. Defaults to JsonRpcConnection.
+    # - Add onInit method to add custom initializations.
+    # - Add setData method. This data will be passed as kwargs to every new connection.
+
+    # Data params shared by connections
+    ENCODER = 'encoder'
+    IDINCREMENT = 'idincrement'
+
+    def __init__(self, connection=JsonRpcConnection, io_loop=None, ssl_options=None, **kwargs):
+        TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options)
+        defaults = {JsonRpcServer.ENCODER: Encoder(), JsonRpcServer.IDINCREMENT: IdIncrement()}
+        self.data = DictConfig(kwargs, defaults, False)
+        self.connection = connection
+        self.onInit(**kwargs)
+
+    def onInit(self, **kwargs):
+        return
+
+    def handle_stream(self, stream, address):
+        self.connection(stream, address, data=self.data)
 
 
 def main():
