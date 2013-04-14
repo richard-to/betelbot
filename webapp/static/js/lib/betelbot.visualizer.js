@@ -1,4 +1,4 @@
-(function(window, undefined)) {
+(function(window, undefined) {
 
     var Betelbot = window.Betelbot || {};
     var Visualizer = {};
@@ -23,7 +23,7 @@
                 lineWidth: 1
             },
             particles: {
-                radius: 6,
+                radius: 3,
                 lineWidth: 2,
                 fillStyle: 'rgba(0,0,0,0)',
                 strokeStyle: 'rgba(20,20,20,.4)'
@@ -53,23 +53,25 @@
         var scale = this.settings.scale;
 
         var wallThreshold = this.settings.map.wallThreshold;
-        var openColorByte = this.settings.map.openColorByte;
-        var wallColorByte = this.settings.map.wallColorByte;
+        var openColor = this.settings.map.openColor;
+        var wallColor = this.settings.map.wallColor;
 
-        var canvas = this.settings.canvas;
-        var context = this.settings.context;
+        var canvas = this.canvas;
+        var context = this.context;
 
         var originX = 0;
         var originY = 0;
+        var width = canvas.width;
+        var height = canvas.height;
+        var imageData = context.getImageData(originX, originY, width, height);
 
-        var imageData = context.getImageData(originX, originY, canvas.width, canvas.height);
-
-        for (var y = 0; y < canvas.height; ++y) {
+        var rgbaWidth = width * rgbaBytes;
+        for (var y = 0; y < height; ++y) {
             var index = Math.floor(y / scale);
-            var col = y * canvas.width * rgbaBytes;
+            var col = y * rgbaWidth;
             _.each(data[index], function(element) {
                 _(scale).times(function(n) {
-                    var color = (element < wallThreshold) ? wallColorByte : openColorByte;
+                    var color = (element < wallThreshold) ? wallColor : openColor;
                     imageData.data[col++] = color;
                     imageData.data[col++] = color;
                     imageData.data[col++] = color;
@@ -83,31 +85,33 @@
     Renderer.prototype.grid = function() {
         var scale = this.settings.scale;
         var gridsize = this.settings.gridsize;
-
+        var scaledGridsize = scale * gridsize;
         var color = this.settings.grid.color;
         var lineWidth = this.settings.grid.lineWidth;
 
-        var canvas = this.settings.canvas;
-        var context = this.settings.context;
+        var canvas = this.canvas;
+        var context = this.context;
 
         var originX = 0;
         var originY = 0;
-
+        var height = canvas.height;
+        var width = canvas.width;
         context.strokeStyle = color;
         context.lineWidth = lineWidth;
 
-        _(Math.floor(canvas.width / scaledGridSize) + 1).times(function(n) {
+        _(Math.floor(width / scaledGridsize) + 1).times(function(n) {
             context.beginPath();
-            context.moveTo(n * scaledGridSize, originY);
-            context.lineTo(n * scaledGridSize, canvas.height);
+            var pointX = n * scaledGridsize;
+            context.moveTo(pointX, originY);
+            context.lineTo(pointX, height);
             context.stroke();
         });
 
-        _(Math.floor(canvas.height / scaledGridSize) + 1).times(function(n) {
+        _(Math.floor(height / scaledGridsize) + 1).times(function(n) {
             context.beginPath();
-            context.lineWidth = lineWidth;
-            context.moveTo(originX, n * scaledGridSize);
-            context.lineTo(canvas.width, n * scaledGridSize);
+            var pointY = n * scaledGridsize;
+            context.moveTo(originX, pointY);
+            context.lineTo(width, pointY);
             context.stroke();
         });
     };
@@ -123,6 +127,7 @@
         var strokeStyle = this.settings.particles.strokeStyle;
         var fillStyle = this.settings.particles.fillStyle;
 
+        var context = this.context;
         context.fillStyle = fillStyle;
         context.lineWidth = lineWidth;
         context.strokeStyle = strokeStyle;
@@ -167,7 +172,7 @@
         context.arc(
             path[0][1] * scaledGridsize + gridMidpoint,
             path[0][0] * scaledGridsize + gridMidpoint,
-            radius, startAngle, endAngle, false);
+            scaledRadius, startAngle, endAngle, false);
         context.fillStyle = lineColor;
         context.fill();
 
@@ -175,7 +180,7 @@
         context.arc(
             path[path.length - 1][1] * scaledGridsize + gridMidpoint,
             path[path.length - 1][0] * scaledGridsize + gridMidpoint,
-            radius, startAngle, endAngle, false);
+            scaledRadius, startAngle, endAngle, false);
         context.fillStyle = lineColor;
         context.fill();
     };
@@ -183,12 +188,10 @@
     Renderer.prototype.histogram = function(probabilities) {
         var scale = this.settings.scale;
         var gridsize = this.settings.gridsize;
-
+        var scaledGridsize = scale * gridsize;
         var textSettings = this.settings.histogram;
 
-        var scaledGridsize = scale * gridsize;
-        var context = this.canvas;
-
+        var context = this.context;
         context.font = textSettings.font;
         context.fillStyle = textSettings.fillStyle;
         context.textAlign = textSettings.textAlign;
@@ -205,7 +208,7 @@
         }
     };
 
-    Renderer.prototype.redraw = function(map, path, particles)
+    Renderer.prototype.redraw = function(map, path, particles) {
         var scale = this.settings.scale;
         var canvas = this.canvas;
         var context = this.context;
@@ -237,8 +240,8 @@
 
         this.renderer = renderer;
         this.methods = {
-            particle: this.responseParticle,
-            path: this.responsePath
+            particle: _.bind(this.responseParticle, this),
+            path: _.bind(this.responsePath, this)
         };
         this.map = null;
         this.path = null;
