@@ -214,9 +214,9 @@ class ParticleFilterServer(JsonRpcServer):
         logging.info(ParticleFilterServer.LOG_SERVER_RUNNING)
 
         defaults = {
-            PathfinderServer.PARAM_MASTER_CONN: None,
-            PathfinderServer.PARAM_PARTICLE: None,
-            PathfinderServer.PARAM_PARTICLE_TOPIC, ParticleTopic()
+            ParticleFilterServer.PARAM_MASTER_CONN: None,
+            ParticleFilterServer.PARAM_PARTICLE: None,
+            ParticleFilterServer.PARAM_PARTICLE_TOPIC: ParticleTopic()
         }
         self.data.update(defaults, True)
         self.data.update(kwargs, False)
