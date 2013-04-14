@@ -75,8 +75,8 @@ class RoboSim(object):
             self.conn.updateparticles(self.onUpdateParticlesResponse, motion, measurements)
 
     def sense(self, direction, y, x):
-        delta = [[1, 0], [0, 1], [1, 0], [0, 1]]
-        directions = ['k', 'h', 'j', 'l']
+        delta = [[0, 1], [1, 0], [1, 0], [0, 1]]
+        directions = ['h', 'j', 'k', 'l']
         Z = []
         count = len(delta)
         y = y * self.gridSize + self.gridSize/2
