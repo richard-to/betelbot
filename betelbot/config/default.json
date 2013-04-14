@@ -2,7 +2,7 @@
     "general": {
         "debug": 1,
         "logLevel": 20,
-        "cmds": "hjkl"
+        "cmds": ["h", "j", "k", "l"]
     },
     "server": {
         "port": 8888

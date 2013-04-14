@@ -274,7 +274,7 @@ def main():
 
     openByte = cfg.map.open
     grid = cv2.imread(cfg.mapData.grid, cv2.CV_LOAD_IMAGE_GRAYSCALE)
-    cmds = list(cfg.general.cmds)
+    cmds = cfg.general.cmds
 
     logger = logging.getLogger('')
     logger.setLevel(cfg.general.logLevel)
