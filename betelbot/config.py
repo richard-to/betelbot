@@ -26,11 +26,11 @@ class JsonConfig(object):
         jsonData = open(filepath).read()
         data = json.loads(jsonData)
         for section in data:
-            sectionData = JsonConfigSection(data[section])
+            sectionData = ConfigSection(data[section])
             setattr(self, section, sectionData)
 
 
-class JsonConfigSection(object):
+class ConfigSection(object):
     # Parse data in a section and dynamically create
     # variable for instance.
 
@@ -41,6 +41,20 @@ class JsonConfigSection(object):
     def dict(self):
         return self.__dict__
 
+
+class DictConfig(object):
+    # Builds a config object from a data dict
+    # If flat is true, build a single level data class
+    # Otherwise the first level will be considered a section.
+
+    def __init__(self, data, flat=True):
+        if flat:
+            for key in data:
+                setattr(self, key, data[key])
+        else:
+            for section in data:
+                sectionData = ConfigSection(data[section])
+                setattr(self, section, sectionData)
 
 def main():
     pass
