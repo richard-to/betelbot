@@ -22,12 +22,27 @@ from topic.default import ParticleTopic
 from util import Client, signalHandler
 
 
-def convertToMotion(start, dest, gridSize):
+def convertToMotion(cmdTopic, start, dest, gridsize):
+    # In the particle filter we need to know the orientation
+    # of the robot. The catch is that it wants the rotation in
+    # in radians from the current orientation to the next.
+    #
+    # Since our robot can only move left, right, up down the angle of
+    # rotation 0 or +/- pi/2 radians.
+    #
+    # 180 degree (pi) rotation is not allowed by particle filter, so
+    # that case should never be picked.
+    #
+    # The particle filter also needs to know distance traveled.
+    # Betelbot is designed to move in discrete blocks of distance "gridsize"
+    #
+    # Expected data output: [orientation, distance]
+
     rotationDist = {
-        'l': 0,
-        'j': 1,
-        'h': 2,
-        'k': 3
+        cmdTopic.right: 0,
+        cmdTopic.down: 1,
+        cmdTopic.left: 2,
+        cmdTopic.up: 3
     }
     rotation = 0
     dist = rotationDist[dest] - rotationDist[start]
@@ -41,10 +56,13 @@ def convertToMotion(start, dest, gridSize):
     elif dist == 3 or dist == -1:
         rotation = -pi/2
 
-    return [rotation, gridSize]
+    return [rotation, gridsize]
 
 
 class Particle:
+    # Represents a single particle in the particle filter.
+    # A particle represents the location and orientation of
+    # where Betelbot may be located.
 
     # Error messages
     ERROR_ORIENTATION = 'Orientation must be in [0..2pi]'
@@ -53,10 +71,17 @@ class Particle:
     # Particle to string format
     REPR_STRING = '[y=%.6s x=%.6s orient=%.6s]'
 
+    # Some constants
     ANGLE_2PI_RAD = 2.0 * pi
     DIGITS_ROUND = 15
 
     def __init__(self, length, grid, lookupTable):
+        # Initializes particle with reference to map and lookup table data.
+        #
+        # - length is not used currently.
+        # - delta is used in the sense function and tells whether to multiple y,x values by 0 or 1.
+        # - the noise parameters adjust the randomness of the algorithm and helps account for sensor noise.
+
         self.grid = grid
         self.lookupTable = lookupTable
         self.delta = [[0, 1], [1, 0], [1, 0], [0, 1]]
@@ -68,6 +93,9 @@ class Particle:
         self.x = 0.0
 
     def randomizePosition(self):
+        # Randomly picks an orientation and (y, x) coordinate for particle.
+        # Keep choosing coordinates until they fall in an open area.
+
         self.orientation = random.random() * Particle.ANGLE_2PI_RAD
         gridY = self.grid.shape[0] - 1
         gridX = self.grid.shape[1] - 1
@@ -78,6 +106,8 @@ class Particle:
                 break
 
     def set(self, y, x, orientation):
+        # Sets the coordinates and orientation of the particle.
+
         if orientation < 0 or orientation >= Particle.ANGLE_2PI_RAD:
             raise ValueError, Particle.ERROR_ORIENTATION
         self.x = float(x)
@@ -85,11 +115,31 @@ class Particle:
         self.orientation = float(orientation)
 
     def setNoise(self, fNoise, tNoise, sNoise):
+        # Sets noise parameters. If used all parameters are set at
+        # the same time.
+        #
+        # Parameters get converted floats.
         self.forwardNoise  = float(fNoise)
         self.turnNoise = float(tNoise)
         self.senseNoise = float(sNoise)
 
     def move(self, motion):
+        # Moves particle.
+        #
+        # Motionat is a list with two values. Orientation and distance
+        #
+        # The robot is not allowed to move backwards. ValueError is thrown.
+        #
+        # The robot's orientation is affected by a gaussian value, if a turn noise
+        # is specified.
+        #
+        # The robot's distance traveled is affected by a forward noise.
+        #
+        # Resulting y,x values are rounded to ints since the lookup table only
+        # handles int values.
+        #
+        # This function returns a new particle object. The object itself is not modified.
+
         turn, forward = motion
 
         if forward < 0:
@@ -109,6 +159,16 @@ class Particle:
         return particle
 
     def sense(self, hasNoise=False):
+        # Simulates a sensor on the real robot.
+        #
+        # Calculates the distance from the 3 of 4 walls (west, north, south, east).
+        # The reason for 3 walls is because the robot cannot sense backward.
+        #
+        # If the y,x value does not fall within the map, then the sensor returns infinity
+        # for the distance.
+        #
+        # The sensor values are affected by sensor noise.
+
         Z = []
         if (self.y >= 0 and self.y < self.grid.shape[0] and
             self.x >= 0 and self.x < self.grid.shape[1] and
@@ -129,6 +189,11 @@ class Particle:
         return Z
 
     def measurementProb(self, measurements):
+        # Measures the probability that the particle is close the actual robot position.
+        #
+        # The probability is measured by calculating the gaussian between actual sensor values
+        # and predicated sensor values.
+
         prob = 1.0
         Z = self.sense()
         for i in xrange(len(Z)):
@@ -137,14 +202,25 @@ class Particle:
         return prob
 
     def gaussian(self, mu, sigma, x):
+        # Calculates gaussian for prediced and expected sensor measurement.
+
         return exp(- ((mu - x) ** 2) / (sigma ** 2) / 2.0) / sqrt(Particle.ANGLE_2PI_RAD * (sigma ** 2))
 
     def __repr__(self):
-        return Particle.REPR_STRING % (str(self.y), str(self.x),
-                                                str(self.orientation))
+        # To string value prints y,x coordinates and orientation.
+
+        return Particle.REPR_STRING % (str(self.y), str(self.x), str(self.orientation))
 
 
 class ParticleFilter:
+    # Particle filter creates N random particles.
+    #
+    # Every time the robot sends new motion and measurement data,
+    # the filter calculates the probability that the particle represents
+    # the location of the robot.
+    #
+    # The probabilities are weighted and then resampled N times. The particles
+    # with a higher weight are more likely to be chosen and survive.
 
     def __init__(self, length, grid, lookupTable, N=500):
         self.N = N
@@ -153,6 +229,8 @@ class ParticleFilter:
         self.lookupTable = lookupTable
 
     def makeParticles(self, forwardNoise, turnNoise, senseNoise, N=None):
+        # Creates N particles with random location and noise values.
+
         self.N = self.N if N is None else N
         self.particles = []
         for i in xrange(self.N):
@@ -162,9 +240,15 @@ class ParticleFilter:
             self.particles.append(p)
 
     def getData(self):
+        # Returns a list of y,x values for particles.
+
         return [[p.y, p.x] for p in self.particles]
 
     def update(self, motion, measurements):
+        # Updates the particles based on motion and measurement values
+        #
+        # Particles are weighted and resambled.
+
         updatedParticles = []
         for i in xrange(self.N):
             updatedParticles.append(self.particles[i].move(motion))
@@ -175,6 +259,11 @@ class ParticleFilter:
         self.particles = self.resample(self.particles, weight, self.N)
 
     def resample(self, particles, weight, N):
+        # Resamples particles. Particles with higher weight have higher probability
+        # of surviving.
+        #
+        # Uses roulette wheel algorithm for resambling.
+
         sampledParticles = []
         index = int(random.random() * N)
         beta = 0.0
@@ -188,6 +277,9 @@ class ParticleFilter:
         return sampledParticles
 
     def getPosition(self, p):
+        # Basically gets the average position (y, x) and orientation of
+        # all particles.
+
         x = 0.0
         y = 0.0
         orientation = 0.0
@@ -200,6 +292,8 @@ class ParticleFilter:
 
 
 class ParticleFilterMethod(object):
+    # Supported Particle filter methods.
+
     UPDATEPARTICLES = 'updateparticles'
 
 
@@ -232,6 +326,7 @@ class ParticleFilterConnection(JsonRpcConnection):
     LOG_UPDATE_FILTER = 'Updating particle filter'
 
     def onInit(self):
+        #
         self.logInfo(ParticleFilterConnection.LOG_NEW_CONNECTION)
 
         self.masterConn = self.data.masterConn
@@ -245,6 +340,10 @@ class ParticleFilterConnection(JsonRpcConnection):
         self.read()
 
     def handleUpdateParticles(self, msg):
+        # Handles update particle requests.
+        #
+        # - Updates particle filter with motion and measurement values.
+        # - Additionally publishes data to Particle Topic.
 
         id = msg.get(jsonrpc.Key.ID, None)
         method = msg.get(jsonrpc.Key.METHOD, None)
