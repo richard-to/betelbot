@@ -11,7 +11,7 @@ from tornado import web, websocket
 import jsonrpc
 
 from client import BetelbotClientConnection
-from jsonconfig import JsonConfig
+from config import JsonConfig
 from util import Client, signalHandler
 from topic.default import ParticleTopic, PathTopic
 
