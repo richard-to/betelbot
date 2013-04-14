@@ -17,14 +17,15 @@ import jsonrpc
 from client import BetelbotClientConnection
 from config import JsonConfig
 from jsonrpc import JsonRpcServer, JsonRpcConnection
-from topic.default import PathTopic, DirectionsTopic
+from topic.default import PathTopic, DirectionsTopic, CmdTopic
 from util import Client, signalHandler
 
 
-def convertPathToDirections(path, cmds, delta):
+def convertPathToDirections(path, cmdTopic, delta):
     # Converts an array of xy coordinates to Betelbot
     # commands (hjkl).
 
+    cmds = cmdTopic.keys
     directions = []
     current = path[0]
     moves = path[1:]
@@ -64,6 +65,9 @@ class Pathfinder:
     #
     # For now, the cost parameter has no effect and will always be set to 1.
 
+    # Delta constant represents grid (y,x) movements. Map to left, down, up, right.
+    DELTA = [[0, -1],[1, 0],[-1, 0],[0, 1]]
+
     def __init__(self, grid, openCell, heuristic=None, cost=1):
         # Initializes the pathfinder with a map and heuristic function.
         #
@@ -78,7 +82,7 @@ class Pathfinder:
         self.grid = grid
         self.openCell = openCell
         self.heuristic = heuristic or self.noHeuristic
-        self.delta = [[0, -1],[1, 0],[-1, 0],[0, 1]]
+        self.delta = Pathfinder.DELTA
         self.cost = cost
 
     def search(self, start, goal):
@@ -190,7 +194,7 @@ class PathfinderServer(JsonRpcServer):
     # Accepted kwargs params
     PARAM_MASTER_CONN= 'masterConn'
     PARAM_PATHFINDER = 'pathfinder'
-    PARAM_CMDS = 'cmds'
+    PARAM_CMD_TOPIC = 'cmdTopic'
     PARAM_PATH_TOPIC = 'pathTopic'
     PARAM_DIRECTIONS_TOPIC = 'directionsTopic'
 
@@ -200,7 +204,7 @@ class PathfinderServer(JsonRpcServer):
         defaults = {
             PathfinderServer.PARAM_MASTER_CONN: None,
             PathfinderServer.PARAM_PATHFINDER: None,
-            PathfinderServer.PARAM_CMDS: None,
+            PathfinderServer.PARAM_CMD_TOPIC: cmdTopic(),
             PathfinderServer.PARAM_PATH_TOPIC: PathTopic(),
             PathfinderServer.PARAM_DIRECTIONS_TOPIC: DirectionsTopic()
         }
@@ -224,7 +228,7 @@ class PathfinderConnection(JsonRpcConnection):
 
         self.masterConn = self.data.masterConn
         self.pathfinder = self.data.pathfinder
-        self.cmds = self.data.cmds
+        self.cmdTopic = self.data.cmdTopic
         self.pathTopic = self.data.pathTopic
         self.directionsTopic = self.data.directionsTopic
 
@@ -250,7 +254,7 @@ class PathfinderConnection(JsonRpcConnection):
             self.logInfo(PathfinderConnection.LOG_SEARCH.format(*placeholders))
 
             path = self.pathfinder.search(start, goal)
-            directions = convertPathToDirections(path, self.cmds, self.pathfinder.delta)
+            directions = convertPathToDirections(path, self.cmdTopic, self.pathfinder.delta)
 
             self.masterConn.publish(self.pathTopic.id, path)
             self.masterConn.publish(self.directionsTopic.id, directions)
@@ -288,7 +292,7 @@ def main():
     conn.register(PathfinderMethod.SEARCH, serverPort)
 
     server = PathfinderServer(connection=PathfinderConnection,
-        masterConn=conn, cmds=cmds, pathfinder=pathfinder)
+        masterConn=conn, pathfinder=pathfinder)
     server.listen(serverPort)
 
     IOLoop.instance().start()
