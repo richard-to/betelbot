@@ -124,11 +124,11 @@ class BetelbotClientConnection(JsonRpcConnection):
 
     def batchLocate(self, callback, methods):
         methodsDict = {}
-        def onBatchLocateResponse(self, methodName, found):
+        def onBatchLocateResponse(methodName, found):
             if methodName in methodsDict:
                 methodsDict[methodName] = found
 
-            if all(method for method in methodsDict):
+            if all(methodsDict[method] is True for method in methodsDict):
                 callback(True)
 
         for method in methods:
