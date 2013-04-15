@@ -17,7 +17,8 @@ from config import JsonConfig, DictConfig
 from jsonrpc import JsonRpcServer, JsonRpcConnection
 from pathfinder import PathfinderMethod, PathfinderSearchType
 from particle import Particle, ParticleFilterMethod, convertToMotion
-from topic.default import CmdTopic, MoveTopic, SenseTopic, PowerTopic, ModeTopic, RobotStatusTopic, WaypointTopic
+from topic.default import CmdTopic, MoveTopic, SenseTopic, PowerTopic, LocationTopic
+from topic.default import ModeTopic, RobotStatusTopic, WaypointTopic
 from util import Client, signalHandler
 
 
@@ -47,10 +48,10 @@ class RoboSim(object):
         self.moveIndex = 0
 
         self.start = start
+        self.current = self.start
         self.goal = None
-        self.current = None
 
-        self.prevDirection = None
+        self.currentDirection = None
         self.directions = None
 
         self.path = None
@@ -64,8 +65,25 @@ class RoboSim(object):
         if self.cmd is None:
             return
 
-        self.prevCmd = cmd
+        pathDelta = {
+            self.cmdTopic.left: [0, -1],
+            self.cmdTopic.down: [1, 0],
+            self.cmdTopic.up: [-1, 0],
+            self.cmdTopic.right: [0, 1]
+        }
+        newDelta = pathDelta[self.cmd]
+        y = self.current[0] + newDelta[0]
+        x = self.current[1] + newDelta[1]
+        measurements = self.sense(self.cmd, y, x)
+        self.current = [y, x]
+
+        if self.currentDirection is None:
+            self.currentDirection = self.cmd
+        motion = convertToMotion(self.cmdTopic, self.currentDirection, self.cmd, self.gridsize)
+        self.currentDirection = self.cmd
         self.cmd = None
+
+        return [motion, measurements]
 
     def moveAuto(self):
 
@@ -85,11 +103,12 @@ class RoboSim(object):
             else:
                 start = dest
             motion = convertToMotion(self.cmdTopic, start, dest, self.gridsize)
+            self.currentDirection = dest
 
             y, x = self.path[self.moveIndex]
             measurements = self.sense(dest, y, x)
+            self.current = (y, x)
 
-            data = self.move(start, dest, y, x)
             self.moveIndex += 1
 
             return [motion, measurements]
@@ -132,15 +151,17 @@ class RoboSim(object):
             self.directions = None
             self.moveIndex = 0
 
-    def setWaypoint(self, waypoint):
-        self.waypoint = waypoint
+    def setLocation(self, y, x):
+        self.start = [y, x]
+        self.current = self.start
 
     def setPath(self, path, directions):
         self.moveIndex = 0
-        self.prevDirection = None
-        self.directions
+        self.start = path.pop(0)
+        self.current = start
+        self.currentDirection = None
+        self.directions = directions
         self.path = path
-        path.pop(0)
 
     def setCmd(self, cmd):
         if self.cmdTopic.isValid(cmd) is False:
@@ -199,39 +220,46 @@ class RoboSimServer(JsonRpcServer):
     # Accepted kwargs params
     PARAM_MASTER_CONN= 'masterConn'
     PARAM_ROBOT = 'robot'
-    PARAM_CMD_TOPIC = 'cmdTopic'
-    PARAM_WAYPOINT_TOPIC = 'waypointTopic'
-    PARAM_POWER_TOPIC = 'powerTopic'
-    PARAM_MODE_TOPIC = 'modeTopic'
-    PARAM_ROBOT_STATUS_TOPIC = 'robotStatusTopic'
 
     def onInit(self, **kwargs):
         logging.info(RoboSimServer.LOG_SERVER_RUNNING)
 
         defaults = {
             RoboSimServer.PARAM_MASTER_CONN: None,
-            RoboSimServer.PARAM_ROBOT: None,
-            RoboSimServer.PARAM_CMD_TOPIC: CmdTopic(),
-            RoboSimServer.PARAM_POWER_TOPIC: PowerTopic(),
-            RoboSimServer.PARAM_MODE_TOPIC: ModeTopic(),
-            RoboSimServer.PARAM_WAYPOINT_TOPIC: WaypointTopic(),
-            RoboSimServer.PARAM_ROBOT_STATUS_TOPIC: RobotStatusTopic()
+            RoboSimServer.PARAM_ROBOT: None
         }
+
+        self.cmdTopic = CmdTopic()
+        self.powerTopic = PowerTopic()
+        self.modeTopic = ModeTopic()
+        self.waypointTopic = WaypointTopic()
+        self.locationTopic = LocationTopic()
+        self.robotTopic = RobotStatusTopic()
+
+        self.servicesFound = False
+
         self.data.update(defaults, True)
         self.data.update(kwargs, False)
 
         self.robot = self.data.robot
         self.masterConn = self.data.masterConn
+
+    def onListen(self, port):
+        self.port = port
         self.masterConn.batchLocate(self.onBatchLocateResponse, [
             ParticleFilterMethod.UPDATEPARTICLES,
             PathfinderMethod.SEARCH
         ])
-        self.masterConn.subscribe(self.data.cmdTopic.id, self.onCmdPublished)
-        self.masterConn.subscribe(self.data.waypointTopic.id, self.onWaypointPublished)
 
     def onBatchLocateResponse(self, found):
-        if (found):
-            print "Services Located"
+        if found:
+            self.servicesFound = True
+            self.masterConn.subscribe(self.cmdTopic.id, self.onCmdPublished)
+            self.masterConn.subscribe(self.locationTopic.id, self.onLocationPublished)
+            self.masterConn.subscribe(self.waypointTopic.id, self.onWaypointPublished)
+            self.masterConn.register(RobotMethod.POWER, self.port)
+            self.masterConn.register(RobotMethod.MODE, self.port)
+            self.masterConn.register(RobotMethod.STATUS, self.port)
 
     def onCmdPublished(self, topic, data):
         cmd = data[0]
@@ -239,12 +267,14 @@ class RoboSimServer(JsonRpcServer):
             self.robot.setCmd(cmd)
             self.processRobotData(*(self.robot.moveCmd()))
 
+    def onLocationPublished(self, topic, data):
+        if self.robot.manual():
+            self.robot.setLocation(data[0])
+
     def onWaypointPublished(self, topic, data):
-        start, goal = data
         if self.robot.autonomous():
-            self.robot.setWaypoint(start, goal)
             self.conn.search(self.onSearchResponse,
-                start, goal, PathfinderSearchType.BOTH)
+                data[0], data[1], PathfinderSearchType.BOTH)
 
     def onSearchResponse(self, result):
         self.robot.setPath(*result)
@@ -272,9 +302,10 @@ class RoboSimConnection(JsonRpcConnection):
 
         self.masterConn = self.data.masterConn
         self.robot = self.data.robot
-        self.powerTopic = self.data.powerTopic
-        self.modeTopic = self.data.modeTopic
-        self.robotStatusTopic = self.robotStatusTopic
+
+        self.powerTopic = PowerTopic()
+        self.modeTopic = ModeTopic()
+        self.robotTopic = RobotStatusTopic()
 
         self.methodHandlers = {
             RobotMethod.POWER: self.handlePower,
@@ -327,9 +358,6 @@ def main():
 
     client = Client('', cfg.server.port, BetelbotClientConnection)
     conn = client.connect()
-    conn.register(RobotMethod.POWER, serverPort)
-    conn.register(RobotMethod.MODE, serverPort)
-    conn.register(RobotMethod.STATUS, serverPort)
 
     roboSim = RoboSim(start, grid, gridsize, lookupTable, delay)
 
