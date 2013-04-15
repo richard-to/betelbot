@@ -9,6 +9,14 @@ class WaypointTopic(object):
     def isValid(self, *data):
         return True
 
+class LocationTopic(object):
+
+    def __init__(self):
+        self.id = 'location'
+
+    def isValid(self, *data):
+        return True
+
 
 class RobotStatusTopic(object):
 
