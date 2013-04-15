@@ -120,8 +120,27 @@ class BetelbotClientConnection(JsonRpcConnection):
             self.write(self.encoder.request(id, BetelbotMethod.LOCATE, method))
         else:
             self.logInfo(BetelbotClientConnection.LOG_ALREADY_LOCATED.format(method))
-            callback(True)
+            callback(method, True)
 
+    def batchLocate(self, callback, methods):
+        methodsDict = {}
+        def onBatchLocateResponse(self, methodName, found):
+            if methodName in methodsDict:
+                methodsDict[methodName] = found
+
+            if all(method for method in methodsDict):
+                callback(True)
+
+        for method in methods:
+            methodsDict[method] = None
+            self.locate(onBatchLocateResponse, method)
+
+    def onBatchLocateResponse(self, callback, methodsDict, found):
+
+        if (self.conn.hasService(PathfinderMethod.SEARCH) and
+                self.conn.hasService(ParticleFilterMethod.UPDATEPARTICLES)):
+            self.conn.search(self.onSearchResponse,
+                self.start, self.goal, PathfinderSearchType.BOTH)
     def handleLocateResponse(self, callback, method, msg):
         # When the locate method receives a response, this callback will be
         # invoked so that we can add the service to the client.
@@ -140,9 +159,9 @@ class BetelbotClientConnection(JsonRpcConnection):
             port, host = result
             client = Client(host, port, jsonrpc.ClientConnection)
             self.addService(method, client)
-            callback(True)
+            callback(method, True)
         else:
-            callback(False)
+            callback(method, False)
 
     def hasService(self, method):
         # Helper method to test if a service methdod exists.
