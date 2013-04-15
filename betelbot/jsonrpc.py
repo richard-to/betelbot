@@ -288,6 +288,12 @@ class JsonRpcServer(TCPServer):
     def handle_stream(self, stream, address):
         self.connection(stream, address, data=self.data)
 
+    def listen(self, port, address=""):
+        TCPServer.listen(self, port, address)
+        self.onListen(port)
+
+    def onListen(self, port):
+        return
 
 def main():
     pass
