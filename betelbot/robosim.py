@@ -92,7 +92,7 @@ class RoboSim(object):
         if not self.on():
             return
 
-        if self.path is not None:
+        if self.path is None:
             return
 
         time.sleep(self.delay)
@@ -160,7 +160,7 @@ class RoboSim(object):
     def setPath(self, path, directions):
         self.moveIndex = 0
         self.start = path.pop(0)
-        self.current = start
+        self.current = self.start
         self.currentDirection = None
         self.directions = directions
         self.path = path
@@ -278,12 +278,14 @@ class RoboSimServer(JsonRpcServer):
 
     def onWaypointPublished(self, topic, data):
         if self.robot.on() and self.robot.autonomous():
-            self.conn.search(self.onSearchResponse,
+            self.masterConn.search(self.onSearchResponse,
                 data[0], data[1], PathfinderSearchType.BOTH)
 
     def onSearchResponse(self, result):
         self.robot.setPath(*result)
-        self.processRobotData(*(self.robot.moveAuto()))
+        robotData = self.robot.moveAuto()
+        if robotData is not None:
+            self.processRobotData(*robotData)
 
     def onUpdateParticlesResponse(self, result):
         if self.robot.on() and self.robot.autonomous():
