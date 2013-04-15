@@ -204,7 +204,7 @@ class PathfinderServer(JsonRpcServer):
         defaults = {
             PathfinderServer.PARAM_MASTER_CONN: None,
             PathfinderServer.PARAM_PATHFINDER: None,
-            PathfinderServer.PARAM_CMD_TOPIC: cmdTopic(),
+            PathfinderServer.PARAM_CMD_TOPIC: CmdTopic(),
             PathfinderServer.PARAM_PATH_TOPIC: PathTopic(),
             PathfinderServer.PARAM_DIRECTIONS_TOPIC: DirectionsTopic()
         }
@@ -278,7 +278,6 @@ def main():
 
     openByte = cfg.map.open
     grid = cv2.imread(cfg.mapData.grid, cv2.CV_LOAD_IMAGE_GRAYSCALE)
-    cmds = cfg.general.cmds
 
     logger = logging.getLogger('')
     logger.setLevel(cfg.general.logLevel)
