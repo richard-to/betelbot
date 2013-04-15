@@ -135,12 +135,6 @@ class BetelbotClientConnection(JsonRpcConnection):
             methodsDict[method] = None
             self.locate(onBatchLocateResponse, method)
 
-    def onBatchLocateResponse(self, callback, methodsDict, found):
-
-        if (self.conn.hasService(PathfinderMethod.SEARCH) and
-                self.conn.hasService(ParticleFilterMethod.UPDATEPARTICLES)):
-            self.conn.search(self.onSearchResponse,
-                self.start, self.goal, PathfinderSearchType.BOTH)
     def handleLocateResponse(self, callback, method, msg):
         # When the locate method receives a response, this callback will be
         # invoked so that we can add the service to the client.
