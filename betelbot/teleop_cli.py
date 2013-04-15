@@ -41,8 +41,8 @@ def onInput(conn, cmdTopic):
         conn.mode(None, 'manual')
     elif c == 'a':
         conn.mode(None, 'autonomous')
-    elif c == 'l':
-        conn.publish("location", 3, 14)
+    elif c == 'r':
+        conn.publish("location", 0, 14)
     elif c == 'w':
         conn.publish("waypoint", [0, 14], [15, 2])
 
