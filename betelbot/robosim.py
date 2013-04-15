@@ -234,6 +234,7 @@ class RoboSimServer(JsonRpcServer):
         self.cmdTopic = CmdTopic()
         self.powerTopic = PowerTopic()
         self.modeTopic = ModeTopic()
+        self.senseTopic = SenseTopic()
         self.waypointTopic = WaypointTopic()
         self.locationTopic = LocationTopic()
         self.robotTopic = RobotStatusTopic()
@@ -265,16 +266,18 @@ class RoboSimServer(JsonRpcServer):
 
     def onCmdPublished(self, topic, data):
         cmd = data[0]
-        if self.robot.manual():
+        if self.robot.on() and self.robot.manual():
             self.robot.setCmd(cmd)
-            self.processRobotData(*(self.robot.moveCmd()))
+            robotData = self.robot.moveCmd()
+            if robotData is not None:
+                self.processRobotData(*robotData)
 
     def onLocationPublished(self, topic, data):
-        if self.robot.manual():
-            self.robot.setLocation(data[0])
+        if self.robot.on() and self.robot.manual():
+            self.robot.setLocation(*data)
 
     def onWaypointPublished(self, topic, data):
-        if self.robot.autonomous():
+        if self.robot.on() and self.robot.autonomous():
             self.conn.search(self.onSearchResponse,
                 data[0], data[1], PathfinderSearchType.BOTH)
 
@@ -283,20 +286,22 @@ class RoboSimServer(JsonRpcServer):
         self.processRobotData(*(self.robot.moveAuto()))
 
     def onUpdateParticlesResponse(self, result):
-        if self.robot.autonomous():
-            self.processRobotData(*(self.robot.moveAuto()))
+        if self.robot.on() and self.robot.autonomous():
+            robotData = self.robot.moveAuto()
+            if robotData is not None:
+                self.processRobotData(*robotData)
 
     def processRobotData(self, motion, measurements):
-        self.conn.publish(self.senseTopic.id, measurements)
-        self.conn.updateparticles(self.onUpdateParticlesResponse, motion, measurements)
+        self.masterConn.publish(self.senseTopic.id, measurements)
+        self.masterConn.updateparticles(self.onUpdateParticlesResponse, motion, measurements)
 
 
 class RoboSimConnection(JsonRpcConnection):
 
     # Log messages
     LOG_NEW_CONNECTION = 'Received a new connection'
-    LOG_POWER_SET = "Power set to {}"
-    LOG_MODE_SET = "Mode set to {}"
+    LOG_POWER_SET = 'Power set to "{}"'
+    LOG_MODE_SET = 'Mode set to "{}"'
     LOG_STATUS = "Retrieving robot status: ({} {})"
 
     def onInit(self):
