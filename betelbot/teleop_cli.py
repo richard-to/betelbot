@@ -35,7 +35,16 @@ def onInput(conn, cmdTopic):
     c = sys.stdin.read(1)
     if cmdTopic.isValid(c):
         conn.publish(cmdTopic.id, c)
-
+    elif c == 'p':
+        conn.power(None, 'on')
+    elif c == 'm':
+        conn.mode(None, 'manual')
+    elif c == 'a':
+        conn.mode(None, 'autonomous')
+    elif c == 'l':
+        conn.publish("location", 3, 14)
+    elif c == 'w':
+        conn.publish("waypoint", [0, 14], [15, 2])
 
 def printInstructions(cmdTopic):
     # Prints Betelbot control instructions to console
@@ -46,6 +55,9 @@ def printInstructions(cmdTopic):
             cmdTopic.left, cmdTopic.down, cmdTopic.up,
             cmdTopic.right, cmdTopic.stop)
 
+def onBatchLocateResponse(found):
+    if found:
+        print "Services located"
 
 def main():
     # Starts up a client connection to publish commands to Betelbot server.
@@ -60,7 +72,7 @@ def main():
     client = Client('', cfg.server.port, BetelbotClientConnection)
     conn = client.connect()
     conn.subscribe(cmdTopic.id, onCmdPublished)
-
+    conn.batchLocate(onBatchLocateResponse, ["power", "mode", "robotstatus"])
     thread = threading.Thread(target=threadedLoop)
     thread.daemon = True
     thread.start()
