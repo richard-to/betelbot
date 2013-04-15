@@ -10,10 +10,6 @@
         "port": 8889,
         "socketUri": "/socket"
     },
-    "robosim": {
-        "delay": 1,
-        "start": [0, 14]
-    },
     "robot": {
         "port": 8890,
         "length": 10
@@ -39,5 +35,10 @@
         "forwardnoise": 0.1,
         "turnnoise": 0.2,
         "sensenoise": 10.0
+    },
+    "robosim": {
+        "port": 8893,
+        "delay": 1,
+        "start": [0, 14]
     }
 }
