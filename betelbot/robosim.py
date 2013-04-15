@@ -12,6 +12,8 @@ import numpy as np
 
 from tornado.ioloop import IOLoop
 
+import jsonrpc
+
 from client import BetelbotClientConnection
 from config import JsonConfig, DictConfig
 from jsonrpc import JsonRpcServer, JsonRpcConnection
@@ -324,8 +326,8 @@ class RoboSimConnection(JsonRpcConnection):
         if len(params) == 1:
             try:
                 self.robot.setMode(params[0])
-                self.logInfo(RoboSimConnection.LOG_MODE_SET.format(modeStatus))
-                self.masterConn.publish(self.modeTopic.id, modeStatus)
+                self.logInfo(RoboSimConnection.LOG_MODE_SET.format(self.robot.mode))
+                self.masterConn.publish(self.modeTopic.id, self.robot.mode)
             except ValueError:
                 pass
 
@@ -334,8 +336,8 @@ class RoboSimConnection(JsonRpcConnection):
         if len(params) == 1:
             try:
                 self.robot.setPower(params[0])
-                self.logInfo(RoboSimConnection.LOG_POWER_SET.format(powerStatus))
-                self.masterConn.publish(self.powerTopic.id, powerStatus)
+                self.logInfo(RoboSimConnection.LOG_POWER_SET.format(self.robot.power))
+                self.masterConn.publish(self.powerTopic.id, self.robot.power)
             except ValueError:
                 pass
 
