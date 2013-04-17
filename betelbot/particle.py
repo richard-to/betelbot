@@ -115,14 +115,14 @@ class Particle:
         self.y = float(y)
         self.orientation = float(orientation)
 
-    def setNoise(self, fNoise, tNoise, sNoise):
+    def setNoise(self, forwardNoise, turnNoise, senseNoise):
         # Sets noise parameters. If used all parameters are set at
         # the same time.
         #
         # Parameters get converted floats.
-        self.forwardNoise  = float(fNoise)
-        self.turnNoise = float(tNoise)
-        self.senseNoise = float(sNoise)
+        self.forwardNoise  = float(forwardNoise)
+        self.turnNoise = float(turnNoise)
+        self.senseNoise = float(senseNoise)
 
     def move(self, motion):
         # Moves particle.
@@ -223,13 +223,16 @@ class ParticleFilter:
     # The probabilities are weighted and then resampled N times. The particles
     # with a higher weight are more likely to be chosen and survive.
 
-    def __init__(self, length, grid, lookupTable, N=500):
+    def __init__(self, length, grid, lookupTable, forwardNoise=0.05, turnNoise=0.05, senseNoise=5, N=500):
         self.N = N
         self.length = length
         self.grid = grid
         self.lookupTable = lookupTable
+        self.forwardNoise = forwardNoise
+        self.turnNoise = turnNoise
+        self.senseNoise = senseNoise
 
-    def makeParticles(self, forwardNoise, turnNoise, senseNoise, N=None):
+    def makeParticles(self, N=None):
         # Creates N particles with random location and noise values.
 
         self.N = self.N if N is None else N
@@ -237,7 +240,7 @@ class ParticleFilter:
         for i in xrange(self.N):
             p = Particle(self.length, self.grid, self.lookupTable)
             p.randomizePosition()
-            p.setNoise(forwardNoise, turnNoise, senseNoise)
+            p.setNoise(self.forwardNoise, self.turnNoise, self.senseNoise)
             self.particles.append(p)
 
     def getData(self):
@@ -295,7 +298,8 @@ class ParticleFilter:
 class ParticleFilterMethod(object):
     # Supported Particle filter methods.
 
-    UPDATEPARTICLES = 'updateparticles'
+    UPDATE = 'particles_update'
+    STATUS = 'particles_status'
 
 
 class ParticleFilterServer(JsonRpcServer):
@@ -306,25 +310,31 @@ class ParticleFilterServer(JsonRpcServer):
     # Shared connection params
     PARAM_MASTER_CONN= 'masterConn'
     PARAM_PARTICLE= 'particleFilter'
-    PARAM_PARTICLE_TOPIC = 'particleTopic'
 
     def onInit(self, **kwargs):
         logging.info(ParticleFilterServer.LOG_SERVER_RUNNING)
 
         defaults = {
             ParticleFilterServer.PARAM_MASTER_CONN: None,
-            ParticleFilterServer.PARAM_PARTICLE: None,
-            ParticleFilterServer.PARAM_PARTICLE_TOPIC: ParticleTopic()
+            ParticleFilterServer.PARAM_PARTICLE: None
         }
         self.data.update(defaults, True)
         self.data.update(kwargs, False)
+
+    def onListen(self, port):
+        self.data.particleFilter.makeParticles()
+        masterConn = self.data.masterConn
+        masterConn.register(ParticleFilterMethod.UPDATE, port)
+        masterConn.register(ParticleFilterMethod.STATUS, port)
 
 
 class ParticleFilterConnection(JsonRpcConnection):
 
     # Log messages
     LOG_NEW_CONNECTION = 'Received a new connection'
-    LOG_UPDATE_FILTER = 'Updating particle filter'
+    LOG_UPDATE = 'Updating particle filter'
+    LOG_RESET = 'Resetting particle filter'
+    LOG_STATUS = 'Retrieving particle filter status'
 
     def onInit(self):
         #
@@ -332,15 +342,16 @@ class ParticleFilterConnection(JsonRpcConnection):
 
         self.masterConn = self.data.masterConn
         self.particleFilter = self.data.particleFilter
-        self.particleTopic = self.data.particleTopic
+        self.particleTopic = ParticleTopic()
 
         self.methodHandlers = {
-            ParticleFilterMethod.UPDATEPARTICLES: self.handleUpdateParticles
+            ParticleFilterMethod.UPDATE: self.handleUpdate,
+            ParticleFilterMethod.STATUS: self.handleStatus
         }
 
         self.read()
 
-    def handleUpdateParticles(self, msg):
+    def handleUpdate(self, msg):
         # Handles update particle requests.
         #
         # - Updates particle filter with motion and measurement values.
@@ -350,22 +361,31 @@ class ParticleFilterConnection(JsonRpcConnection):
         method = msg.get(jsonrpc.Key.METHOD, None)
         params = msg.get(jsonrpc.Key.PARAMS, None)
 
-        if id and len(params) == 2:
-            motion, measurements = params
-
-            self.logInfo(ParticleFilterConnection.LOG_UPDATE_FILTER)
-
+        if id and len(params) == 3:
+            motion, measurements, reset = params
+            if reset:
+                self.logInfo(ParticleFilterConnection.LOG_RESET)
+                self.particleFilter.makeParticles()
+            self.logInfo(ParticleFilterConnection.LOG_UPDATE)
             self.particleFilter.update(motion, measurements)
-            particles = self.particleFilter.getData()
+            self.sendParticleResponse(id)
 
-            self.masterConn.publish(self.particleTopic.id, particles)
-            self.write(self.encoder.response(id, particles))
+    def handleStatus(self, msg):
+        id = msg.get(jsonrpc.Key.ID, None)
+        if id:
+            self.logInfo(ParticleFilterConnection.LOG_STATUS)
+            self.sendParticleResponse(id)
+
+    def sendParticleResponse(self, id):
+        particles = self.particleFilter.getData()
+        self.masterConn.publish(self.particleTopic.id, particles)
+        self.write(self.encoder.response(id, particles))
 
 
 def main():
     signal.signal(signal.SIGINT, signalHandler)
 
-    cfg =JsonConfig()
+    cfg = JsonConfig()
 
     logger = logging.getLogger('')
     logger.setLevel(cfg.general.logLevel)
@@ -375,22 +395,19 @@ def main():
 
     length = cfg.robot.length
 
-    forwardNoise = cfg.particle.forwardnoise
-    turnNoise = cfg.particle.turnnoise
-    senseNoise = cfg.particle.sensenoise
+    forwardNoise = cfg.particle.forwardNoise
+    turnNoise = cfg.particle.turnNoise
+    senseNoise = cfg.particle.senseNoise
 
     particleTopic = ParticleTopic()
 
-    particleFilter = ParticleFilter(length, map, lookupTable)
-    particleFilter.makeParticles(forwardNoise, turnNoise, senseNoise)
-    particles = particleFilter.getData()
+    particleFilter = ParticleFilter(length, map, lookupTable,
+        forwardNoise, turnNoise, senseNoise)
 
     serverPort = cfg.particle.port
 
     client = Client('', cfg.server.port, BetelbotClientConnection)
     conn = client.connect()
-    conn.register(ParticleFilterMethod.UPDATEPARTICLES, serverPort)
-    conn.publish(particleTopic.id, particles)
 
     server = ParticleFilterServer(connection=ParticleFilterConnection,
         masterConn=conn, particleFilter=particleFilter, particleTopic=particleTopic)
