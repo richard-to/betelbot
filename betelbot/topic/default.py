@@ -6,12 +6,11 @@ class WaypointTopic(object):
     def __init__(self):
         self.id = 'waypoint'
         self.numParams = 2
+        self.locationTopic = LocationTopic()
 
     def isValid(self, *data):
-        return len(data) == self.numParams and all(self.isValidCoord(coord) for coord in data)
-
-    def isValidCoord(self, coord):
-        return len(coord) == self.numParams and all(isinstance(xy, int) for xy in coord)
+        return (len(data) == self.numParams and
+            all(self.locationTopic.isValid(coord) for coord in data))
 
 
 class LocationTopic(object):
