@@ -45,6 +45,8 @@ def onInput(conn, cmdTopic):
         conn.publish("location", 0, 14)
     elif c == 'w':
         conn.publish("waypoint", [0, 14], [15, 2])
+    elif c == 'u':
+        conn.robotstatus(None)
 
 def printInstructions(cmdTopic):
     # Prints Betelbot control instructions to console
