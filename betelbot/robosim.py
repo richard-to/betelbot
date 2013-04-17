@@ -237,7 +237,7 @@ class RoboSimServer(JsonRpcServer):
         self.senseTopic = SenseTopic()
         self.waypointTopic = WaypointTopic()
         self.locationTopic = LocationTopic()
-        self.robotTopic = RobotStatusTopic()
+        self.robotStatusTopic = RobotStatusTopic()
 
         self.servicesFound = False
 
@@ -314,7 +314,7 @@ class RoboSimConnection(JsonRpcConnection):
 
         self.powerTopic = PowerTopic()
         self.modeTopic = ModeTopic()
-        self.robotTopic = RobotStatusTopic()
+        self.robotStatusTopic = RobotStatusTopic()
 
         self.methodHandlers = {
             RobotMethod.POWER: self.handlePower,
@@ -325,7 +325,7 @@ class RoboSimConnection(JsonRpcConnection):
 
     def handleStatus(self, msg):
         status = self.robot.getStatus()
-        self.logInfo(RoboSimConnection.LOG_STATUS.format(status))
+        self.logInfo(RoboSimConnection.LOG_STATUS.format(*status))
         self.masterConn.publish(self.robotStatusTopic.id, status)
 
     def handleMode(self, msg):
