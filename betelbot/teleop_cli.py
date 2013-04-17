@@ -51,7 +51,7 @@ class Teleop(object):
         # Prints Betelbot control instructions to console
 
         cmdTopic = self.topics.cmd
-        print 'Keyboard Commands List'
+        print 'Commands List'
         print '-----------------------'
         print '[{}] Gets information on robot status.'.format(TeleopKey.INFO)
         print '[{}] Toggles robot power on/off.'.format(TeleopKey.POWER)
@@ -122,12 +122,11 @@ def main():
     client = Client('', cfg.server.port, BetelbotClientConnection)
     conn = client.connect()
 
-    teleop = Teleop(conn, topics, cfg.teleop.location, cfg.teleop.waypoint)
-
     thread = threading.Thread(target=threadedLoop)
     thread.daemon = True
     thread.start()
 
+    teleop = Teleop(conn, topics, cfg.teleop.location, cfg.teleop.waypoint)
     teleop.printInstructions()
     teleop.run()
 
