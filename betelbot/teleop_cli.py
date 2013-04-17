@@ -41,6 +41,7 @@ class Teleop(object):
         self.location = location
         self.waypoint = waypoint
         self.ready = False
+        self.power = None
 
     def run(self):
         self.conn.subscribe(self.topics.cmd.id, self.onCmdPublished)
@@ -109,8 +110,14 @@ class Teleop(object):
 
     def onBatchLocateResponse(self, found):
         if found:
+            self.conn.robot_status(self.onInitialRobotStatus)
+
+    def onInitialRobotStatus(self, result):
+        if self.topics.robot_status.isValid(*result):
             print Teleop.MSG_SERVICES_READY
             self.ready = True
+            self.power = result[0]
+            self.onServiceResponse(RobotMethod.STATUS, result)
 
 
 def main():
