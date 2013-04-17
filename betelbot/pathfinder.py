@@ -175,7 +175,7 @@ class PathfinderMethod:
     # - Method: search
     # - Params: start[x,y], goal[x,y], PathfinderSearchType
     # - Response: Depends on type
-    SEARCH = 'search'
+    SEARCH = 'pathfinder_search'
 
 
 class PathfinderServer(JsonRpcServer):
@@ -194,22 +194,19 @@ class PathfinderServer(JsonRpcServer):
     # Accepted kwargs params
     PARAM_MASTER_CONN= 'masterConn'
     PARAM_PATHFINDER = 'pathfinder'
-    PARAM_CMD_TOPIC = 'cmdTopic'
-    PARAM_PATH_TOPIC = 'pathTopic'
-    PARAM_DIRECTIONS_TOPIC = 'directionsTopic'
 
     def onInit(self, **kwargs):
         logging.info(PathfinderServer.LOG_SERVER_RUNNING)
 
         defaults = {
             PathfinderServer.PARAM_MASTER_CONN: None,
-            PathfinderServer.PARAM_PATHFINDER: None,
-            PathfinderServer.PARAM_CMD_TOPIC: CmdTopic(),
-            PathfinderServer.PARAM_PATH_TOPIC: PathTopic(),
-            PathfinderServer.PARAM_DIRECTIONS_TOPIC: DirectionsTopic()
+            PathfinderServer.PARAM_PATHFINDER: None
         }
         self.data.update(defaults, True)
         self.data.update(kwargs, False)
+
+    def onListen(self, port):
+        self.data.masterConn.register(PathfinderMethod.SEARCH, port)
 
 
 class PathfinderConnection(JsonRpcConnection):
@@ -228,9 +225,9 @@ class PathfinderConnection(JsonRpcConnection):
 
         self.masterConn = self.data.masterConn
         self.pathfinder = self.data.pathfinder
-        self.cmdTopic = self.data.cmdTopic
-        self.pathTopic = self.data.pathTopic
-        self.directionsTopic = self.data.directionsTopic
+        self.cmdTopic = CmdTopic()
+        self.pathTopic = PathTopic()
+        self.directionsTopic = DirectionsTopic()
 
         self.methodHandlers = {
             PathfinderMethod.SEARCH: self.handleSearch,
@@ -288,7 +285,6 @@ def main():
 
     client = Client('', cfg.server.port, BetelbotClientConnection)
     conn = client.connect()
-    conn.register(PathfinderMethod.SEARCH, serverPort)
 
     server = PathfinderServer(connection=PathfinderConnection,
         masterConn=conn, pathfinder=pathfinder)
