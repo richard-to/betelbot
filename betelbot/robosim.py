@@ -242,11 +242,11 @@ class RoboSimServer(JsonRpcServer):
                 self.processRobotData(*robotData)
 
     def onLocationPublished(self, topic, data):
-        if self.robot.on() and self.robot.manual():
+        if self.robot.on() and self.robot.manual() and self.topic.location.isValid(*data):
             self.robot.setLocation(*data)
 
     def onWaypointPublished(self, topic, data):
-        if self.robot.on() and self.robot.autonomous():
+        if self.robot.on() and self.robot.autonomous() and self.topic.waypoint.isValid(*data):
             self.masterConn.pathfinder_search(self.onSearchResponse,
                 data[0], data[1], PathfinderSearchType.BOTH)
 
@@ -296,8 +296,8 @@ class RoboSimConnection(JsonRpcConnection):
         if id:
             status = self.robot.getStatus()
             self.logInfo(RoboSimConnection.LOG_STATUS.format(*status))
-            self.masterConn.publish(self.robotStatusTopic.id, status)
-            self.write(self.encoder.response(id, status))
+            self.masterConn.publish(self.robotStatusTopic.id, *status)
+            self.write(self.encoder.response(id, *status))
 
     def handleMode(self, msg):
         id = msg.get(jsonrpc.Key.ID, None)
