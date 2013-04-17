@@ -33,7 +33,7 @@ class RobotStatusTopic(object):
 
     def isValid(self, *data):
         return (len(data) == self.numParams and
-            self.powerTopic.isValid(data[0]) and self.modeTopic(data[1]))
+            self.powerTopic.isValid(data[0]) and self.modeTopic.isValid(data[1]))
 
 
 class PowerTopic(ValueTopic):
