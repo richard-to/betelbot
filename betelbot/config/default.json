@@ -32,13 +32,17 @@
     },
     "particle": {
         "port": 8892,
-        "forwardnoise": 0.1,
-        "turnnoise": 0.2,
-        "sensenoise": 10.0
+        "forwardNoise": 0.1,
+        "turnNoise": 0.2,
+        "senseNoise": 10.0
     },
     "robosim": {
         "port": 8893,
         "delay": 1,
         "start": [0, 14]
+    },
+    "teleop": {
+        "location": [10, 3],
+        "waypoint": [[0, 14], [15, 2]]
     }
 }
