@@ -5,32 +5,41 @@ class WaypointTopic(object):
 
     def __init__(self):
         self.id = 'waypoint'
+        self.numParams = 2
 
     def isValid(self, *data):
-        return True
+        return len(data) == self.numParams and all(self.isValidCoord(coord) for coord in data)
+
+    def isValidCoord(self, coord):
+        return len(coord) == self.numParams and all(isinstance(xy, int) for xy in coord)
+
 
 class LocationTopic(object):
 
     def __init__(self):
         self.id = 'location'
+        self.numParams = 2
 
     def isValid(self, *data):
-        return True
+        return len(data) == self.numParams and all(isinstance(xy, int) for xy in data)
 
 
 class RobotStatusTopic(object):
 
     def __init__(self):
-        self.id = 'robotstatus'
+        self.id = 'robot_status'
+        self.numParams = 2
+        self.powerTopic = PowerTopic()
+        self.modeTopic = ModeTopic()
 
     def isValid(self, *data):
-        return True
+        return (len(data) == self.numParams and
+            self.powerTopic.isValid(data[0]) and self.modeTopic(data[1]))
 
 
 class PowerTopic(ValueTopic):
 
     def __init__(self):
-
         self.on = "on"
         self.off = "off"
         self.keys = (self.on, self.off)
@@ -41,7 +50,6 @@ class PowerTopic(ValueTopic):
 class ModeTopic(ValueTopic):
 
     def __init__(self):
-
         self.autonomous = "autonomous"
         self.manual = "manual"
         self.keys = (self.autonomous, self.manual)
@@ -81,10 +89,6 @@ class MoveTopic(CmdTopic):
 
 
 class SenseTopic(object):
-    # Placeholder PathTopic for now.
-    #
-    # Best way to validate?
-
     def __init__(self):
         self.id = 'sense'
 
@@ -93,10 +97,6 @@ class SenseTopic(object):
 
 
 class PathTopic(object):
-    # Placeholder PathTopic for now.
-    #
-    # Best way to validate?
-
     def __init__(self):
         self.id = 'path'
 
@@ -105,10 +105,6 @@ class PathTopic(object):
 
 
 class DirectionsTopic(object):
-    # Placeholder DirectionsTopic for now.
-    #
-    # Best way to validate?
-
     def __init__(self):
         self.id = 'directions'
 
