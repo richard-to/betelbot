@@ -290,6 +290,7 @@
                 showParticle: ".btn-group-particle button",
                 showRoute: ".btn-group-route button",
                 showGridlines: ".btn-group-gridlines button",
+                arrowKeys: ".btn-group-arrows button",
                 alertConnect: ".alert-connect-server"
             },
             dataAttr: {
@@ -357,6 +358,11 @@
         $(selectors.showRoute, self.el).click(function(event) {
             self.renderer.showRoute(($(this).attr(dataValue.name) === dataValue.vals.on));
             self.redraw();
+        });
+
+        $(selectors.arrowKeys, self.el).click(function(event) {
+            var data = {method:"publish", params: ["cmd", $(this).attr(dataValue.name)]};
+            ws.send(JSON.stringify(data));
         });
     };
 
