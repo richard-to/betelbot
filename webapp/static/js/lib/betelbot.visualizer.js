@@ -23,6 +23,11 @@
         var defaults = {
             scale: 2,
             gridsize: 20,
+            display: {
+                gridlines: true,
+                route: true,
+                particles: true,
+            },
             map: {
                 openColor: 255,
                 wallColor: 240,
@@ -224,24 +229,39 @@
         }
     };
 
+    Renderer.prototype.showGridlines = function(show) {
+        this.settings.display.gridlines = (show === true);
+    };
+
+    Renderer.prototype.showRoute = function(show) {
+        this.settings.display.route = (show === true);
+    };
+
+    Renderer.prototype.showParticles = function(show) {
+        this.settings.display.particles = (show === true);
+    };
+
     // Redraws the map data. Used when new data is received from Betelbot server.
     Renderer.prototype.redraw = function(map, path, particles) {
         var scale = this.settings.scale;
         var canvas = this.canvas;
         var context = this.context;
+        var display = this.settings.display;
 
         context.clearRect(0, 0, canvas.width, canvas.height);
 
         if (map) {
             this.map(map);
-            this.grid();
+            if (display.gridlines) {
+                this.grid();
+            }
         }
 
-        if (path) {
+        if (path && display.route) {
             this.linePath(path);
         }
 
-        if (particles) {
+        if (particles && display.particles) {
             this.particles(particles);
         }
     };
@@ -250,12 +270,27 @@
 
     // Controller for Betelbot app.
     // Main job is to send new data to renderer.
-    var App = function(renderer, settings) {
+    var App = function(el, renderer, settings) {
         var defaults = {
             dataUri: '/static/data/map.json',
-            socketUri: 'ws://localhost:8889/socket'
+            socketUri: 'ws://localhost:8889/socket',
+            selectors: {
+                showParticle: ".btn-group-particle button",
+                showRoute: ".btn-group-route button",
+                showGridlines: ".btn-group-gridlines button",
+                alertConnect: ".alert-connect-server"
+            },
+            dataAttr: {
+                value: {
+                    name: "data-value",
+                    vals: {on: "1", off: "0"}
+                }
+            }
         };
-        this.settings = $.extend(defaults, settings);
+        this.settings = $.extend(true, defaults, settings);
+
+        this.$el = el instanceof $ ? el : $(el);
+        this.el = this.$el[0];
 
         this.renderer = renderer;
         this.methods = {
@@ -266,18 +301,45 @@
         this.path = null;
         this.particles = null;
 
+        var selectors = this.settings.selectors;
         var self = this;
         var ws = null;
 
         this.connect = function() {
             ws = new WebSocket(self.settings.socketUri);
+
+            ws.onopen = function() {
+                $(selectors.alertConnect, self.el).hide();
+            };
+
             ws.onmessage = function(event) {
                 var response = JSON.parse(event.data);
                 if (self.methods.hasOwnProperty(response.method)) {
                     self.methods[response.method](response.params);
                 }
             };
+
+            ws.onclose = function() {
+                $(selectors.alertConnect, self.el).show();
+                self.connect();
+            };
         };
+
+        var dataValue = this.settings.dataAttr.value;
+        $(selectors.showParticle, self.el).click(function(event) {
+            self.renderer.showParticles(($(this).attr(dataValue.name) === dataValue.vals.on));
+            self.redraw();
+        });
+
+        $(selectors.showGridlines, self.el).click(function(event) {
+            self.renderer.showGridlines(($(this).attr(dataValue.name) === dataValue.vals.on));
+            self.redraw();
+        });
+
+        $(selectors.showRoute, self.el).click(function(event) {
+            self.renderer.showRoute(($(this).attr(dataValue.name) === dataValue.vals.on));
+            self.redraw();
+        });
     };
 
     // Runs the app. Will load map and automatically connect to server.
