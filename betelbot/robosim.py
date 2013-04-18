@@ -182,7 +182,7 @@ class RobotMethod(object):
     STATUS = 'robot_status'
 
 
-class RoboSimServer(JsonRpcServer):
+class RobotServer(JsonRpcServer):
     # RoboSim server is a service that simulates Betelbot
 
     # Log messages
@@ -267,7 +267,7 @@ class RoboSimServer(JsonRpcServer):
         self.masterConn.particles_update(self.onUpdateParticlesResponse, motion, measurements, reset)
 
 
-class RoboSimConnection(JsonRpcConnection):
+class RobotConnection(JsonRpcConnection):
 
     # Log messages
     LOG_NEW_CONNECTION = 'Received a new connection'
@@ -345,7 +345,7 @@ def main():
 
     roboSim = RoboSim(start, grid, gridsize, lookupTable, delay)
 
-    server = RoboSimServer(connection=RoboSimConnection, robot=roboSim, masterConn=conn)
+    server = RobotServer(connection=RobotConnection, robot=roboSim, masterConn=conn)
     server.listen(serverPort)
 
     IOLoop.instance().start()
