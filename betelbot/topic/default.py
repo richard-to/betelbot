@@ -10,7 +10,7 @@ class WaypointTopic(object):
 
     def isValid(self, *data):
         return (len(data) == self.numParams and
-            all(self.locationTopic.isValid(coord) for coord in data))
+            all(self.locationTopic.isValid(*coord) for coord in data))
 
 
 class LocationTopic(object):
