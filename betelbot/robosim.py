@@ -19,8 +19,7 @@ from config import JsonConfig, DictConfig
 from jsonrpc import JsonRpcServer, JsonRpcConnection
 from pathfinder import PathfinderMethod, PathfinderSearchType
 from particle import Particle, ParticleFilterMethod, convertToMotion
-from topic.default import CmdTopic, MoveTopic, SenseTopic, PowerTopic, LocationTopic
-from topic.default import ModeTopic, RobotStatusTopic, WaypointTopic
+from topic import getTopicFactory
 from util import Client, signalHandler
 
 
@@ -34,12 +33,10 @@ class RoboSim(object):
 
     def __init__(self, start, grid, gridsize, lookupTable, delay=1):
 
-        self.cmdTopic = CmdTopic()
-        self.powerTopic = PowerTopic()
-        self.modeTopic = ModeTopic()
+        self.topics = getTopicFactory()
 
-        self.power = self.powerTopic.off
-        self.mode = self.modeTopic.manual
+        self.power = self.topics.power.off
+        self.mode = self.topics.mode.manual
 
         self.grid = grid
         self.gridsize = gridsize
@@ -55,11 +52,12 @@ class RoboSim(object):
         if not self.on() or self.cmd is None:
             return
 
+        cmdTopic = self.topics.cmd
         pathDelta = {
-            self.cmdTopic.left: [0, -1],
-            self.cmdTopic.down: [1, 0],
-            self.cmdTopic.up: [-1, 0],
-            self.cmdTopic.right: [0, 1]
+            cmdTopic.left: [0, -1],
+            cmdTopic.down: [1, 0],
+            cmdTopic.up: [-1, 0],
+            cmdTopic.right: [0, 1]
         }
         newDelta = pathDelta[self.cmd]
         y = self.current[0] + newDelta[0]
@@ -71,7 +69,7 @@ class RoboSim(object):
         if self.currentDirection is None:
             self.currentDirection = self.cmd
             reset = True
-        motion = convertToMotion(self.cmdTopic, self.currentDirection, self.cmd, self.gridsize)
+        motion = convertToMotion(cmdTopic, self.currentDirection, self.cmd, self.gridsize)
         self.currentDirection = self.cmd
         self.cmd = None
 
@@ -92,7 +90,7 @@ class RoboSim(object):
             else:
                 start = dest
                 reset = True
-            motion = convertToMotion(self.cmdTopic, start, dest, self.gridsize)
+            motion = convertToMotion(self.topics.cmd, start, dest, self.gridsize)
             self.currentDirection = dest
 
             y, x = self.path[self.moveIndex]
@@ -106,7 +104,7 @@ class RoboSim(object):
     def sense(self, direction, y, x):
 
         delta = self.delta
-        directions = self.cmdTopic.keys
+        directions = self.topics.cmd.keys
         Z = []
         count = len(delta)
         midpoint = self.gridsize/2
@@ -128,12 +126,12 @@ class RoboSim(object):
         return [self.power, self.mode]
 
     def setPower(self, power):
-        if self.powerTopic.isValid(power) is False:
+        if self.topics.power.isValid(power) is False:
             raise ValueError, ERROR_POWER
         self.power = power
 
     def setMode(self, mode):
-        if self.modeTopic.isValid(mode) is False:
+        if self.topics.mode.isValid(mode) is False:
             raise ValueError, ERROR_MODE
 
         if self.mode != mode:
@@ -160,19 +158,19 @@ class RoboSim(object):
         self.moveIndex = 0
 
     def setCmd(self, cmd):
-        if self.cmdTopic.isValid(cmd) is False:
+        if self.topics.cmd.isValid(cmd) is False:
             raise ValueError, ERROR_CMD
         self.resetPath()
         self.cmd = cmd
 
     def on(self):
-        return self.power == self.powerTopic.on
+        return self.power == self.topics.power.on
 
     def autonomous(self):
-        return self.mode == self.modeTopic.autonomous
+        return self.mode == self.topics.mode.autonomous
 
     def manual(self):
-        return self.mode == self.modeTopic.manual
+        return self.mode == self.topics.mode.manual
 
 
 class RobotMethod(object):
@@ -193,20 +191,14 @@ class RobotServer(JsonRpcServer):
     PARAM_ROBOT = 'robot'
 
     def onInit(self, **kwargs):
-        logging.info(RoboSimServer.LOG_SERVER_RUNNING)
+        logging.info(RobotServer.LOG_SERVER_RUNNING)
 
         defaults = {
-            RoboSimServer.PARAM_MASTER_CONN: None,
-            RoboSimServer.PARAM_ROBOT: None
+            RobotServer.PARAM_MASTER_CONN: None,
+            RobotServer.PARAM_ROBOT: None
         }
 
-        self.cmdTopic = CmdTopic()
-        self.powerTopic = PowerTopic()
-        self.modeTopic = ModeTopic()
-        self.senseTopic = SenseTopic()
-        self.waypointTopic = WaypointTopic()
-        self.locationTopic = LocationTopic()
-        self.robotStatusTopic = RobotStatusTopic()
+        self.topics = getTopicFactory()
 
         self.servicesFound = False
 
@@ -226,9 +218,9 @@ class RobotServer(JsonRpcServer):
     def onBatchLocateResponse(self, found):
         if found:
             self.servicesFound = True
-            self.masterConn.subscribe(self.cmdTopic.id, self.onCmdPublished)
-            self.masterConn.subscribe(self.locationTopic.id, self.onLocationPublished)
-            self.masterConn.subscribe(self.waypointTopic.id, self.onWaypointPublished)
+            self.masterConn.subscribe(self.topics.cmd.id, self.onCmdPublished)
+            self.masterConn.subscribe(self.topics.location.id, self.onLocationPublished)
+            self.masterConn.subscribe(self.topics.waypoint.id, self.onWaypointPublished)
             self.masterConn.register(RobotMethod.POWER, self.port)
             self.masterConn.register(RobotMethod.MODE, self.port)
             self.masterConn.register(RobotMethod.STATUS, self.port)
@@ -242,11 +234,11 @@ class RobotServer(JsonRpcServer):
                 self.processRobotData(*robotData)
 
     def onLocationPublished(self, topic, data):
-        if self.robot.on() and self.robot.manual() and self.topic.location.isValid(*data):
+        if self.robot.on() and self.robot.manual() and self.topics.location.isValid(*data):
             self.robot.setLocation(*data)
 
     def onWaypointPublished(self, topic, data):
-        if self.robot.on() and self.robot.autonomous() and self.topic.waypoint.isValid(*data):
+        if self.robot.on() and self.robot.autonomous() and self.topics.waypoint.isValid(*data):
             self.masterConn.pathfinder_search(self.onSearchResponse,
                 data[0], data[1], PathfinderSearchType.BOTH)
 
@@ -263,7 +255,7 @@ class RobotServer(JsonRpcServer):
                 self.processRobotData(*robotData)
 
     def processRobotData(self, motion, measurements, reset):
-        self.masterConn.publish(self.senseTopic.id, measurements)
+        self.masterConn.publish(self.topics.sense.id, measurements)
         self.masterConn.particles_update(self.onUpdateParticlesResponse, motion, measurements, reset)
 
 
@@ -276,13 +268,11 @@ class RobotConnection(JsonRpcConnection):
     LOG_STATUS = "Retrieving robot status: ({} {})"
 
     def onInit(self):
-        self.logInfo(RoboSimConnection.LOG_NEW_CONNECTION)
+        self.logInfo(RobotConnection.LOG_NEW_CONNECTION)
         self.masterConn = self.data.masterConn
         self.robot = self.data.robot
 
-        self.powerTopic = PowerTopic()
-        self.modeTopic = ModeTopic()
-        self.robotStatusTopic = RobotStatusTopic()
+        self.topics = getTopicFactory()
 
         self.methodHandlers = {
             RobotMethod.POWER: self.handlePower,
@@ -295,18 +285,18 @@ class RobotConnection(JsonRpcConnection):
         id = msg.get(jsonrpc.Key.ID, None)
         if id:
             status = self.robot.getStatus()
-            self.logInfo(RoboSimConnection.LOG_STATUS.format(*status))
-            self.masterConn.publish(self.robotStatusTopic.id, *status)
+            self.logInfo(RobotConnection.LOG_STATUS.format(*status))
+            self.masterConn.publish(self.topics.robot_status.id, *status)
             self.write(self.encoder.response(id, *status))
 
     def handleMode(self, msg):
         id = msg.get(jsonrpc.Key.ID, None)
         params = msg.get(jsonrpc.Key.PARAMS, [])
-        if id and self.modeTopic.isValid(*params):
+        if id and self.topics.mode.isValid(*params):
             try:
                 self.robot.setMode(params[0])
-                self.logInfo(RoboSimConnection.LOG_MODE_SET.format(self.robot.mode))
-                self.masterConn.publish(self.modeTopic.id, self.robot.mode)
+                self.logInfo(RobotConnection.LOG_MODE_SET.format(self.robot.mode))
+                self.masterConn.publish(self.topics.mode.id, self.robot.mode)
                 self.write(self.encoder.response(id, self.robot.mode))
             except ValueError:
                 pass
@@ -314,11 +304,11 @@ class RobotConnection(JsonRpcConnection):
     def handlePower(self, msg):
         id = msg.get(jsonrpc.Key.ID, None)
         params = msg.get(jsonrpc.Key.PARAMS, [])
-        if id and self.powerTopic.isValid(*params):
+        if id and self.topics.power.isValid(*params):
             try:
                 self.robot.setPower(params[0])
-                self.logInfo(RoboSimConnection.LOG_POWER_SET.format(self.robot.power))
-                self.masterConn.publish(self.powerTopic.id, self.robot.power)
+                self.logInfo(RobotConnection.LOG_POWER_SET.format(self.robot.power))
+                self.masterConn.publish(self.topics.power.id, self.robot.power)
                 self.write(self.encoder.response(id, self.robot.power))
             except ValueError:
                 pass
