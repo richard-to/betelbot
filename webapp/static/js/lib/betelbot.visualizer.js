@@ -291,13 +291,15 @@
                 showRoute: ".btn-group-route button",
                 showGridlines: ".btn-group-gridlines button",
                 arrowKeys: ".btn-group-arrows button",
-                alertConnect: ".alert-connect-server"
+                alertConnect: ".alert-connect-server",
+                power: ".btn-group-power button",
+                mode: ".btn-group-mode button"
             },
             dataAttr: {
-                value: {
-                    name: "data-value",
-                    vals: {on: "1", off: "0"}
-                }
+                value: "data-value"
+            },
+            dataVals: {
+                toggle: {on: "1", off: "0"}
             }
         };
         this.settings = $.extend(true, defaults, settings);
@@ -344,25 +346,39 @@
             };
         };
 
-        var dataValue = this.settings.dataAttr.value;
+        var dataValueAttr = this.settings.dataAttr.value;
+        var dataToggleOn = this.settings.dataVals.toggle.on;
+
+        $(selectors.power, self.el).click(function(event) {
+            var value = ($(this).attr(dataValueAttr) === dataToggleOn) ? RobotPower.ON : RobotPower.OFF;
+            var data = {method:"robot_power", params: [value]};
+            ws.send(JSON.stringify(data));
+        });
+
+        $(selectors.mode, self.el).click(function(event) {
+            var value = ($(this).attr(dataValueAttr) === dataToggleOn) ? RobotMode.AUTONOMOUS : RobotMode.MANUAL;
+            var data = {method:"robot_mode", params: [value]};
+            ws.send(JSON.stringify(data));
+        });
+
+        $(selectors.arrowKeys, self.el).click(function(event) {
+            var data = {method:"publish", params: ["cmd", $(this).attr(dataValueAttr)]};
+            ws.send(JSON.stringify(data));
+        });
+
         $(selectors.showParticle, self.el).click(function(event) {
-            self.renderer.showParticles(($(this).attr(dataValue.name) === dataValue.vals.on));
+            self.renderer.showParticles(($(this).attr(dataValueAttr) === dataToggleOn));
             self.redraw();
         });
 
         $(selectors.showGridlines, self.el).click(function(event) {
-            self.renderer.showGridlines(($(this).attr(dataValue.name) === dataValue.vals.on));
+            self.renderer.showGridlines(($(this).attr(dataValueAttr) === dataToggleOn));
             self.redraw();
         });
 
         $(selectors.showRoute, self.el).click(function(event) {
-            self.renderer.showRoute(($(this).attr(dataValue.name) === dataValue.vals.on));
+            self.renderer.showRoute(($(this).attr(dataValueAttr) === dataToggleOn));
             self.redraw();
-        });
-
-        $(selectors.arrowKeys, self.el).click(function(event) {
-            var data = {method:"publish", params: ["cmd", $(this).attr(dataValue.name)]};
-            ws.send(JSON.stringify(data));
         });
     };
 
@@ -396,9 +412,25 @@
     };
 
     App.prototype.responseMode = function(params) {
+        var status = (params[0] === RobotMode.AUTONOMOUS) ? [true, false] : [false, true];
+        $(this.settings.selectors.mode, this.el).each(function(index) {
+            if (status[index]) {
+                $(this).addClass("active");
+            } else {
+                $(this).removeClass("active");
+            }
+        });
     };
 
     App.prototype.responsePower = function(params) {
+        var status = (params[0] === RobotPower.ON) ? [true, false] : [false, true];
+        $(this.settings.selectors.power, this.el).each(function(index) {
+            if (status[index]) {
+                $(this).addClass("active");
+            } else {
+                $(this).removeClass("active");
+            }
+        });
     };
 
     // Redraw is called any time data is updated.
