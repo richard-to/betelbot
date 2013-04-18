@@ -44,6 +44,7 @@ class Teleop(object):
         self.power = None
 
     def run(self):
+        self.conn.subscribe(self.topics.power.id, lambda topic, data: self.onPowerResponse(data))
         self.conn.subscribe(self.topics.cmd.id, self.onCmdPublished)
         self.conn.batchLocate(self.onBatchLocateResponse,
             [RobotMethod.POWER, RobotMethod.MODE, RobotMethod.STATUS])
