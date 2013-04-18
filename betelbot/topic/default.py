@@ -45,6 +45,9 @@ class PowerTopic(ValueTopic):
 
         super(PowerTopic, self).__init__('power', self.keys, 1)
 
+    def toggle(self, value):
+        return self.on if value == self.off else self.off
+
 
 class ModeTopic(ValueTopic):
 
