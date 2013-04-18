@@ -64,6 +64,11 @@ class Teleop(object):
             cmdTopic.left, cmdTopic.down, cmdTopic.up, cmdTopic.right)
         print '[{}] Stops robot.'.format(cmdTopic.stop)
 
+    def onPowerResponse(self, result):
+        if self.topics.power.isValid(*result):
+            self.onServiceResponse(RobotMethod.POWER, result)
+            self.power = result[0]
+
     def onServiceResponse(self, method, result):
         if result:
             print '[{}]{}'.format(method, ' '.join(result))
@@ -89,9 +94,8 @@ class Teleop(object):
         if topics.cmd.isValid(c):
             conn.publish(topics.cmd.id, c)
         elif c == TeleopKey.POWER:
-            conn.robot_power(
-                lambda result: self.onServiceResponse(RobotMethod.POWER, result),
-                topics.power.on)
+            power = topics.power.toggle(self.power)
+            conn.robot_power(self.onPowerResponse, power)
         elif c == TeleopKey.MANUAL:
             conn.robot_mode(
                 lambda result: self.onServiceResponse(RobotMethod.MODE, result),
