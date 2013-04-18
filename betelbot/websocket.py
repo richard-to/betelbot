@@ -13,8 +13,9 @@ import jsonrpc
 
 from client import BetelbotClientConnection
 from config import JsonConfig
-from util import Client, signalHandler
+from robosim import RobotMethod
 from topic import getTopicFactory
+from util import Client, signalHandler
 
 
 class VisualizerWebSocket(websocket.WebSocketHandler):
@@ -49,7 +50,12 @@ class VisualizerWebSocket(websocket.WebSocketHandler):
         method = data.get(jsonrpc.Key.METHOD, None)
         params = data.get(jsonrpc.Key.PARAMS, None)
 
-        print method
+        if method == self.topics.cmd.id:
+            self.conn.publish(self.topics.cmd.id, *params)
+        elif method == RobotMethod.POWER:
+            self.conn.robot_power(self.onRequest, *params)
+        elif method == RobotMethod.MODE:
+            self.conn.robot_mode(self.onRequest, *params)
 
     def on_close(self):
         logging.info(VisualizerWebSocket.LOG_CLOSED)
@@ -60,6 +66,13 @@ class VisualizerWebSocket(websocket.WebSocketHandler):
 
         msg = self.encoder.notification(topic, data[0])
         self.write_message(msg)
+
+    def onRequest(self, result):
+        pass
+
+
+def onBatchLocateResponse(found):
+    pass
 
 
 def main():
@@ -72,6 +85,8 @@ def main():
 
     client = Client('', cfg.server.port, BetelbotClientConnection)
     conn = client.connect()
+    conn.batchLocate(onBatchLocateResponse,
+            [RobotMethod.POWER, RobotMethod.MODE, RobotMethod.STATUS])
 
     application = web.Application([
         (cfg.websocketServer.socketUri, VisualizerWebSocket, dict(conn=conn)),
