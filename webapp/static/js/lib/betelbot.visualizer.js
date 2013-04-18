@@ -267,6 +267,18 @@
     };
     Visualizer.Renderer = Renderer;
 
+    var RobotPower = {
+        ON: "on",
+        OFF: "off"
+    };
+
+    Visualizer.RobotPower = RobotPower;
+
+    var RobotMode = {
+        MANUAL: "manual",
+        AUTONOMOUS: "autonomous"
+    };
+    Visualizer.RobotMode = RobotMode;
 
     // Controller for Betelbot app.
     // Main job is to send new data to renderer.
@@ -295,11 +307,17 @@
         this.renderer = renderer;
         this.methods = {
             particle: _.bind(this.responseParticle, this),
-            path: _.bind(this.responsePath, this)
+            path: _.bind(this.responsePath, this),
+            power: _.bind(this.responsePower, this),
+            mode: _.bind(this.responseMode, this)
         };
+
         this.map = null;
         this.path = null;
         this.particles = null;
+
+        this.power = RobotPower.OFF;
+        this.mode = RobotMode.MANUAL;
 
         var selectors = this.settings.selectors;
         var self = this;
@@ -369,6 +387,12 @@
     App.prototype.responsePath = function(params) {
         this.path = params[0];
         this.redraw();
+    };
+
+    App.prototype.responseMode = function(params) {
+    };
+
+    App.prototype.responsePower = function(params) {
     };
 
     // Redraw is called any time data is updated.
