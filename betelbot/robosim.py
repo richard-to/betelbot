@@ -15,34 +15,21 @@ from tornado.ioloop import IOLoop
 from client import BetelbotClientConnection
 from config import JsonConfig
 from particle import Particle, convertToMotion
-from robot import RobotConnection, RobotMethod, RobotServer
+from robot import RobotDriver, RobotConnection, RobotMethod, RobotServer
 from topic import getTopicFactory
 from util import Client, signalHandler
 
 
-class BetelbotSimDriver(object):
-    # BetelbotSimDriver simulates the real robot.
-
-    # Error messages
-    ERROR_POWER = "Invalid power value"
-    ERROR_MODE = "Invalid mode value"
-    ERROR_CMD = "Invalid cmd value"
+class BetelbotSimDriver(RobotDriver):
 
     def __init__(self, start, grid, gridsize, lookupTable, delay=1):
 
-        self.topics = getTopicFactory()
-
-        self.power = self.topics.power.off
-        self.mode = self.topics.mode.manual
+        super(BetelbotSimDriver, self).__init__(start)
 
         self.grid = grid
         self.gridsize = gridsize
         self.lookupTable = lookupTable
         self.delay = delay
-        self.delta = Particle.DELTA
-
-        self.setLocation(*start)
-        self.moveIndex = 0
 
     def moveCmd(self, callback):
 
@@ -119,56 +106,6 @@ class BetelbotSimDriver(object):
                 Z.append(None)
             index += 1
         return Z
-
-    def getStatus(self):
-        return [self.power, self.mode]
-
-    def setPower(self, power):
-        if self.topics.power.isValid(power) is False:
-            raise ValueError, BetelbotSimDriver.ERROR_POWER
-        self.power = power
-
-    def setMode(self, mode):
-        if self.topics.mode.isValid(mode) is False:
-            raise ValueError, BetelbotSimDriver.ERROR_MODE
-
-        if self.mode != mode:
-            self.mode = mode
-            self.resetPath()
-
-    def setLocation(self, y, x):
-        self.resetPath()
-        self.start = [y, x]
-        self.current = self.start
-        self.currentDirection = None
-        self.goal = None
-
-    def setPath(self, path, directions):
-        self.setLocation(*path.pop(0))
-        self.goal = path[-1]
-        self.path = path
-        self.directions = directions
-
-    def resetPath(self):
-        self.cmd = None
-        self.path = None
-        self.directions = None
-        self.moveIndex = 0
-
-    def setCmd(self, cmd):
-        if self.topics.cmd.isValid(cmd) is False:
-            raise ValueError, BetelbotSimDriver.ERROR_CMD
-        self.resetPath()
-        self.cmd = cmd
-
-    def on(self):
-        return self.power == self.topics.power.on
-
-    def autonomous(self):
-        return self.mode == self.topics.mode.autonomous
-
-    def manual(self):
-        return self.mode == self.topics.mode.manual
 
 
 def main():

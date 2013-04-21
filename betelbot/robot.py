@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import abc
 import logging
 import os
 import re
@@ -20,145 +21,6 @@ from pathfinder import PathfinderMethod, PathfinderSearchType
 from particle import Particle, ParticleFilterMethod, convertToMotion
 from topic import getTopicFactory
 from util import Client, Connection, signalHandler
-
-
-class BetelbotDriverServer(TCPServer):
-
-    # Log messages
-    LOG_SERVER_RUNNING = 'BetelBot Driver is running'
-    LOG_CONNECTION_REFUSED = 'Only one connection is allowed at a time'
-
-    def __init__(self, io_loop=None, ssl_options=None, **kwargs):
-        logging.info(BetelbotDriverServer.LOG_SERVER_RUNNING)
-        TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options, **kwargs)
-        self.connection = None
-
-    def handle_stream(self, stream, address):
-        if self.connection is None:
-            self.connection = BetelbotDriverConnection(stream, address, None)
-        else:
-            logging.info(BetelbotDriverServer.LOG_CONNECTION_REFUSED)
-            stream.close()
-
-
-class BetelbotDriverConnection(Connection):
-
-    # Log messages
-    LOG_CONNECTED = 'Betelbot connected'
-    LOG_RECEIVED = 'Received data'
-
-    def onInit(self):
-        self.logInfo(BetelbotDriverConnection.LOG_CONNECTED)
-        self.callback = None
-        self.read()
-
-    def onRead(self, data):
-        self.logInfo(BetelbotDriverConnection.LOG_RECEIVED)
-        tokens = data.strip().split(" ")
-        if tokens[0] == 'm' and self.callback is not None:
-            self.callback(tokens[1])
-        self.read()
-
-    def move(self, callback, cmd):
-        self.callback = callback
-        self.write(cmd)
-
-
-class BetelbotDriver(object):
-
-    # Error messages
-    ERROR_POWER = "Invalid power value"
-    ERROR_MODE = "Invalid mode value"
-    ERROR_CMD = "Invalid cmd value"
-    ERROR_NO_CONNECTION = "No connection to Betelbot"
-
-    def __init__(self, start, server):
-
-        self.server = server
-
-        self.topics = getTopicFactory()
-
-        self.power = self.topics.power.off
-        self.mode = self.topics.mode.manual
-
-        self.delta = Particle.DELTA
-
-        self.setLocation(*start)
-        self.moveIndex = 0
-
-    def moveCmd(self, callback):
-
-        if not self.on() or self.cmd is None:
-            callback(None, None, None)
-            return
-
-        self.server.connection.move(callback, self.cmd)
-        self.currentDirection = self.cmd
-        self.cmd = None
-
-    def moveAuto(self, callback):
-
-        if not self.on() or self.path is None:
-            callback(None, None, None)
-            return
-        cmd = self.directions[self.moveIndex]
-        self.server.connection.move(callback, cmd)
-        self.currentDirection = cmd
-        self.moveIndex += 1
-
-    def getStatus(self):
-        return [self.power, self.mode]
-
-    def setPower(self, power):
-        if self.server.connection is None:
-            raise ValueError, BetelbotDriver.ERROR_NO_CONNECTION
-
-        if self.topics.power.isValid(power) is False:
-            raise ValueError, BetelbotDriver.ERROR_POWER
-
-        self.power = power
-
-    def setMode(self, mode):
-        if self.topics.mode.isValid(mode) is False:
-            raise ValueError, BetelbotDriver.ERROR_MODE
-
-        if self.mode != mode:
-            self.mode = mode
-            self.resetPath()
-
-    def setLocation(self, y, x):
-        self.resetPath()
-        self.start = [y, x]
-        self.current = self.start
-        self.currentDirection = None
-        self.goal = None
-
-    def setPath(self, path, directions):
-        self.setLocation(*path.pop(0))
-        self.goal = path[-1]
-        self.path = path
-        self.directions = directions
-
-    def resetPath(self):
-        self.cmd = None
-        self.path = None
-        self.directions = None
-        self.moveIndex = 0
-
-    def setCmd(self, cmd):
-        if self.topics.cmd.isValid(cmd) is False:
-            raise ValueError, BetelbotDriver.ERROR_CMD
-        self.resetPath()
-        self.cmd = cmd
-
-    def on(self):
-        return self.power == self.topics.power.on
-
-    def autonomous(self):
-        return self.mode == self.topics.mode.autonomous
-
-    def manual(self):
-        return self.mode == self.topics.mode.manual
 
 
 class RobotMethod(object):
@@ -295,6 +157,165 @@ class RobotConnection(JsonRpcConnection):
                 self.write(self.encoder.response(id, self.driver.power))
             except ValueError:
                 pass
+
+
+class RobotDriver(object):
+
+    __metaclass__ = abc.ABCMeta
+
+    # Error messages
+    ERROR_POWER = "Invalid power value"
+    ERROR_MODE = "Invalid mode value"
+    ERROR_CMD = "Invalid cmd value"
+    ERROR_NO_CONNECTION = "No connection to Betelbot"
+
+    def __init__(self, start):
+        self.start = start
+        self.topics = getTopicFactory()
+
+        self.power = self.topics.power.off
+        self.mode = self.topics.mode.manual
+
+        self.delta = Particle.DELTA
+
+        self.setLocation(*start)
+        self.moveIndex = 0
+
+    @abc.abstractmethod
+    def moveCmd(self, callback):
+        return
+
+    @abc.abstractmethod
+    def moveAuto(self, callback):
+        return
+
+    def getStatus(self):
+        return [self.power, self.mode]
+
+    def setPower(self, power):
+        if self.topics.power.isValid(power) is False:
+            raise ValueError, RobotDriverAbstract.ERROR_POWER
+        self.power = power
+
+    def setMode(self, mode):
+        if self.topics.mode.isValid(mode) is False:
+            raise ValueError, RobotDriverAbstract.ERROR_MODE
+
+        if self.mode != mode:
+            self.mode = mode
+            self.resetPath()
+
+    def setLocation(self, y, x):
+        self.resetPath()
+        self.start = [y, x]
+        self.current = self.start
+        self.currentDirection = None
+        self.goal = None
+
+    def setPath(self, path, directions):
+        self.setLocation(*path.pop(0))
+        self.goal = path[-1]
+        self.path = path
+        self.directions = directions
+
+    def resetPath(self):
+        self.cmd = None
+        self.path = None
+        self.directions = None
+        self.moveIndex = 0
+
+    def setCmd(self, cmd):
+        if self.topics.cmd.isValid(cmd) is False:
+            raise ValueError, RobotDriverAbstract.ERROR_CMD
+        self.resetPath()
+        self.cmd = cmd
+
+    def on(self):
+        return self.power == self.topics.power.on
+
+    def autonomous(self):
+        return self.mode == self.topics.mode.autonomous
+
+    def manual(self):
+        return self.mode == self.topics.mode.manual
+
+
+class BetelbotDriver(RobotDriver):
+
+    def __init__(self, start, server):
+        super(BetelbotDriver, self).__init__(start)
+        self.server = server
+
+    def moveCmd(self, callback):
+
+        if not self.on() or self.cmd is None:
+            callback(None, None, None)
+            return
+
+        self.server.connection.move(callback, self.cmd)
+        self.currentDirection = self.cmd
+        self.cmd = None
+
+    def moveAuto(self, callback):
+
+        if not self.on() or self.path is None:
+            callback(None, None, None)
+            return
+        cmd = self.directions[self.moveIndex]
+        self.server.connection.move(callback, cmd)
+        self.currentDirection = cmd
+        self.moveIndex += 1
+
+    def setPower(self, power):
+        if self.server.connection is None:
+            raise ValueError, BetelbotDriver.ERROR_NO_CONNECTION
+
+        if self.topics.power.isValid(power) is False:
+            raise ValueError, BetelbotDriver.ERROR_POWER
+
+        self.power = power
+
+
+class BetelbotDriverServer(TCPServer):
+
+    # Log messages
+    LOG_SERVER_RUNNING = 'BetelBot Driver is running'
+    LOG_CONNECTION_REFUSED = 'Only one connection is allowed at a time'
+
+    def __init__(self, io_loop=None, ssl_options=None, **kwargs):
+        logging.info(BetelbotDriverServer.LOG_SERVER_RUNNING)
+        TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options, **kwargs)
+        self.connection = None
+
+    def handle_stream(self, stream, address):
+        if self.connection is None:
+            self.connection = BetelbotDriverConnection(stream, address, None)
+        else:
+            logging.info(BetelbotDriverServer.LOG_CONNECTION_REFUSED)
+            stream.close()
+
+
+class BetelbotDriverConnection(Connection):
+
+    # Log messages
+    LOG_CONNECTED = 'Betelbot connected'
+    LOG_RECEIVED = 'Received data'
+
+    def onInit(self):
+        self.logInfo(BetelbotDriverConnection.LOG_CONNECTED)
+        self.callback = None
+        self.read()
+
+    def onRead(self, data):
+        self.logInfo(BetelbotDriverConnection.LOG_RECEIVED)
+        tokens = data.strip().split(" ")
+        if tokens[0] == 'm' and self.callback is not None:
+            self.callback(tokens[1])
+        self.read()
+
+    def move(self, callback, cmd):
+        self.callback = callback
+        self.write(cmd)
 
 
 def main():
