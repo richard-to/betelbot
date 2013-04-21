@@ -13,6 +13,7 @@ import jsonrpc
 
 from client import BetelbotClientConnection
 from config import JsonConfig
+from master import BetelbotMethod
 from robosim import RobotMethod
 from topic import getTopicFactory
 from util import Client, signalHandler
@@ -50,8 +51,8 @@ class VisualizerWebSocket(websocket.WebSocketHandler):
         method = data.get(jsonrpc.Key.METHOD, None)
         params = data.get(jsonrpc.Key.PARAMS, None)
 
-        if method == self.topics.cmd.id:
-            self.conn.publish(self.topics.cmd.id, *params)
+        if method == BetelbotMethod.PUBLISH and params[0] == self.topics.cmd.id:
+            self.conn.publish(*params)
         elif method == RobotMethod.POWER:
             self.conn.robot_power(self.onRequest, *params)
         elif method == RobotMethod.MODE:
