@@ -37,7 +37,7 @@ class BetelbotDriverServer(TCPServer):
         if self.connection is None:
             self.connection = BetelbotDriverConnection(stream, address, None)
         else:
-            logging.info(BetelbotDriverServer.LOG_SERVER_RUNNING)
+            logging.info(BetelbotDriverServer.LOG_CONNECTION_REFUSED)
             stream.close()
 
 class BetelbotDriverConnection(Connection):
