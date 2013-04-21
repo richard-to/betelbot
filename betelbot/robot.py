@@ -11,28 +11,34 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream
 from tornado.netutil import TCPServer
 
+import jsonrpc
+
 from client import BetelbotClientConnection
 from config import JsonConfig, DictConfig
-from topic.default import CmdTopic, MoveTopic, SenseTopic
+from jsonrpc import JsonRpcServer, JsonRpcConnection
+from pathfinder import PathfinderMethod, PathfinderSearchType
+from particle import Particle, ParticleFilterMethod, convertToMotion
+from topic import getTopicFactory
 from util import Client, Connection, signalHandler
 
 
-class BetelbotDriver(TCPServer):
+class BetelbotDriverServer(TCPServer):
 
     # Log messages
     LOG_SERVER_RUNNING = 'BetelBot Driver is running'
+    LOG_CONNECTION_REFUSED = 'Only one connection is allowed at a time'
 
-    # Data params for Betelbot driver
-    PARAM_CLIENT = 'client'
-
-    def __init__(self, client, io_loop=None, ssl_options=None, **kwargs):
+    def __init__(self, io_loop=None, ssl_options=None, **kwargs):
         logging.info(BetelbotDriver.LOG_SERVER_RUNNING)
         TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options, **kwargs)
-        self.data = DictConfig({BetelbotDriver.PARAM_CLIENT: client}, extend=True)
+        self.connection = None
 
     def handle_stream(self, stream, address):
-        BetelbotDriverConnection(stream, address, self.data)
-
+        if self.connection is None:
+            self.connection = BetelbotDriverConnection(stream, address, None)
+        else:
+            logging.info(BetelbotDriver.LOG_SERVER_RUNNING)
+            stream.close()
 
 class BetelbotDriverConnection(Connection):
 
@@ -42,21 +48,108 @@ class BetelbotDriverConnection(Connection):
 
     def onInit(self):
         self.logInfo(BetelbotDriverConnection.LOG_CONNECTED)
-        self.cmdTopic = CmdTopic()
-        self.moveTopic = MoveTopic()
-        self.client = data.client
-        self.client.subscribe(self.cmdTopic.id, self.onCmdForBot)
         self.read()
 
     def onRead(self, data):
         self.logInfo(BetelbotDriverConnection.LOG_RECEIVED)
-        tokens = data.strip().split(" ")
-        if tokens[0] == 'm':
-            self.client.publish(self.moveTopic.id, tokens[1])
         self.read()
 
-    def onCmdForBot(self, topic, data=None):
-        self.write(data[0])
+
+class BetelbotDriver(object):
+
+    # Error messages
+    ERROR_POWER = "Invalid power value"
+    ERROR_MODE = "Invalid mode value"
+    ERROR_CMD = "Invalid cmd value"
+    ERROR_NO_CONNECTION = "No connection to Betelbot"
+
+    def __init__(self, start, server):
+
+        self.server = server
+
+        self.topics = getTopicFactory()
+
+        self.power = self.topics.power.off
+        self.mode = self.topics.mode.manual
+
+        self.delta = Particle.DELTA
+
+        self.setLocation(*start)
+        self.moveIndex = 0
+
+    def moveCmd(self):
+
+        if not self.on() or self.cmd is None:
+            return
+        callback = None
+        self.server.connection.move(callback, self.cmd)
+        self.currentDirection = self.cmd
+        self.cmd = None
+
+    def moveAuto(self):
+
+        if not self.on() or self.path is None:
+            return
+        callback = None
+        self.server.connection.move(callback, self.directions[self.moveIndex])
+        self.currentDirection = self.directions[self.moveIndex]
+        self.moveIndex += 1
+
+    def getStatus(self):
+        return [self.power, self.mode]
+
+    def setPower(self, power):
+        if self.server.connection is None:
+            raise ValueError, ERROR_NO_CONNECTION
+
+        if self.topics.power.isValid(power) is False:
+            raise ValueError, ERROR_POWER
+
+        self.power = power
+
+    def setMode(self, mode):
+        if self.topics.mode.isValid(mode) is False:
+            raise ValueError, ERROR_MODE
+
+        if self.mode != mode:
+            self.mode = mode
+            self.resetPath()
+
+    def setLocation(self, y, x):
+        self.resetPath()
+        self.start = [y, x]
+        self.current = self.start
+        self.currentDirection = None
+        self.goal = None
+
+    def setPath(self, path, directions):
+        self.setLocation(*path.pop(0))
+        self.goal = path[-1]
+        self.path = path
+        self.directions = directions
+
+    def resetPath(self):
+        self.cmd = None
+        self.path = None
+        self.directions = None
+        self.moveIndex = 0
+
+    def setCmd(self, cmd):
+        if self.topics.cmd.isValid(cmd) is False:
+            raise ValueError, ERROR_CMD
+        self.resetPath()
+        self.cmd = cmd
+
+    def on(self):
+        return self.power == self.topics.power.on
+
+    def autonomous(self):
+        return self.mode == self.topics.mode.autonomous
+
+    def manual(self):
+        return self.mode == self.topics.mode.manual
+
+
 class RobotMethod(object):
     # Methods supported by Robot server
     POWER = 'robot_power'
@@ -200,7 +293,7 @@ def main():
 
     logger = logging.getLogger('')
     logger.setLevel(cfg.general.logLevel)
-
+    """
     client = Client('', cfg.server.port, BetelbotClientConnection)
     conn = client.connect()
 
@@ -208,7 +301,7 @@ def main():
     server.listen(cfg.robot.port)
 
     IOLoop.instance().start()
-
+    """
 
 if __name__ == '__main__':
     main()
