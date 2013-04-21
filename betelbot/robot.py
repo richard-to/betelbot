@@ -77,22 +77,24 @@ class BetelbotDriver(object):
         self.setLocation(*start)
         self.moveIndex = 0
 
-    def moveCmd(self):
+    def moveCmd(self, callback):
 
         if not self.on() or self.cmd is None:
+            callback(None, None, None)
             return
-        callback = None
+
         self.server.connection.move(callback, self.cmd)
         self.currentDirection = self.cmd
         self.cmd = None
 
-    def moveAuto(self):
+    def moveAuto(self, callback):
 
         if not self.on() or self.path is None:
+            callback(None, None, None)
             return
-        callback = None
-        self.server.connection.move(callback, self.directions[self.moveIndex])
-        self.currentDirection = self.directions[self.moveIndex]
+        cmd = self.directions[self.moveIndex]
+        self.server.connection.move(callback, cmd)
+        self.currentDirection = cmd
         self.moveIndex += 1
 
     def getStatus(self):
