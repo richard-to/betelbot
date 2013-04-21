@@ -293,15 +293,19 @@ def main():
 
     logger = logging.getLogger('')
     logger.setLevel(cfg.general.logLevel)
-    """
+
     client = Client('', cfg.server.port, BetelbotClientConnection)
     conn = client.connect()
 
-    server = BetelbotDriver(client)
+    driverServer = BetelbotDriverServer()
+    driverServer.listen(cfg.robot.driverPort)
+    driver = BetelbotDriver(cfg.robot.start, driverServer)
+
+    server = RobotServer(connection=RobotConnection, driver=driver, masterConn=conn)
     server.listen(cfg.robot.port)
 
     IOLoop.instance().start()
-    """
+
 
 if __name__ == '__main__':
     main()
