@@ -40,6 +40,7 @@ class BetelbotDriverServer(TCPServer):
             logging.info(BetelbotDriverServer.LOG_CONNECTION_REFUSED)
             stream.close()
 
+
 class BetelbotDriverConnection(Connection):
 
     # Log messages
@@ -48,11 +49,19 @@ class BetelbotDriverConnection(Connection):
 
     def onInit(self):
         self.logInfo(BetelbotDriverConnection.LOG_CONNECTED)
+        self.callback = None
         self.read()
 
     def onRead(self, data):
         self.logInfo(BetelbotDriverConnection.LOG_RECEIVED)
+        tokens = data.strip().split(" ")
+        if tokens[0] == 'm' and self.callback is not None:
+            self.callback(tokens[1])
         self.read()
+
+    def move(self, callback, cmd):
+        self.callback = callback
+        self.write(cmd)
 
 
 class BetelbotDriver(object):
