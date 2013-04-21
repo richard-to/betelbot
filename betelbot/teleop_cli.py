@@ -45,7 +45,8 @@ class Teleop(object):
 
     def run(self):
         self.conn.subscribe(self.topics.power.id, lambda topic, data: self.onPowerResponse(data))
-        self.conn.subscribe(self.topics.cmd.id, self.onCmdPublished)
+        self.conn.subscribe(self.topics.mode.id, self.onTopicPublished)
+        self.conn.subscribe(self.topics.cmd.id, self.onTopicPublished)
         self.conn.batchLocate(self.onBatchLocateResponse,
             [RobotMethod.POWER, RobotMethod.MODE, RobotMethod.STATUS])
 
@@ -74,7 +75,7 @@ class Teleop(object):
         if result:
             print '[{}]{}'.format(method, ' '.join(result))
 
-    def onCmdPublished(self, topic, data=None):
+    def onTopicPublished(self, topic, data=None):
         # Debugging callback to make test if commands are
         # being received and published.
 
