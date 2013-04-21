@@ -44,9 +44,10 @@ class BetelbotSimDriver(object):
         self.setLocation(*start)
         self.moveIndex = 0
 
-    def moveCmd(self):
+    def moveCmd(self, callback):
 
         if not self.on() or self.cmd is None:
+            callback(None, None, None)
             return
 
         cmdTopic = self.topics.cmd
@@ -70,11 +71,12 @@ class BetelbotSimDriver(object):
         self.currentDirection = self.cmd
         self.cmd = None
 
-        return [motion, measurements, reset]
+        callback(motion, measurements, reset)
 
-    def moveAuto(self):
+    def moveAuto(self, callback):
 
         if not self.on() or self.path is None:
+            callback(None, None, None)
             return
 
         time.sleep(self.delay)
@@ -95,8 +97,7 @@ class BetelbotSimDriver(object):
             self.current = (y, x)
 
             self.moveIndex += 1
-
-            return [motion, measurements, reset]
+            callback(motion, measurements, reset)
 
     def sense(self, direction, y, x):
 
