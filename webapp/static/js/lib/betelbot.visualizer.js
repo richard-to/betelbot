@@ -414,7 +414,7 @@
     App.prototype.responseMode = function(params) {
         var status = (params[0] === RobotMode.AUTONOMOUS) ? [true, false] : [false, true];
         $(this.settings.selectors.mode, this.el).each(function(index) {
-            if (status[index]) {
+            if (status[index] === true) {
                 $(this).addClass("active");
             } else {
                 $(this).removeClass("active");
@@ -425,7 +425,7 @@
     App.prototype.responsePower = function(params) {
         var status = (params[0] === RobotPower.ON) ? [true, false] : [false, true];
         $(this.settings.selectors.power, this.el).each(function(index) {
-            if (status[index]) {
+            if (status[index] === true) {
                 $(this).addClass("active");
             } else {
                 $(this).removeClass("active");
