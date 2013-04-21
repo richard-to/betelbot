@@ -20,8 +20,8 @@ from topic import getTopicFactory
 from util import Client, signalHandler
 
 
-class RoboSim(object):
-    # RoboSim simulates the real robot.
+class BetelbotSimDriver(object):
+    # BetelbotSimDriver simulates the real robot.
 
     # Error messages
     ERROR_POWER = "Invalid power value"
@@ -189,9 +189,9 @@ def main():
     client = Client('', cfg.server.port, BetelbotClientConnection)
     conn = client.connect()
 
-    roboSim = RoboSim(start, grid, gridsize, lookupTable, delay)
+    driver = BetelbotSimDriver(start, grid, gridsize, lookupTable, delay)
 
-    server = RobotServer(connection=RobotConnection, robot=roboSim, masterConn=conn)
+    server = RobotServer(connection=RobotConnection, driver=driver, masterConn=conn)
     server.listen(serverPort)
 
     IOLoop.instance().start()
