@@ -125,12 +125,12 @@ class BetelbotSimDriver(object):
 
     def setPower(self, power):
         if self.topics.power.isValid(power) is False:
-            raise ValueError, ERROR_POWER
+            raise ValueError, BetelbotSimDriver.ERROR_POWER
         self.power = power
 
     def setMode(self, mode):
         if self.topics.mode.isValid(mode) is False:
-            raise ValueError, ERROR_MODE
+            raise ValueError, BetelbotSimDriver.ERROR_MODE
 
         if self.mode != mode:
             self.mode = mode
@@ -157,7 +157,7 @@ class BetelbotSimDriver(object):
 
     def setCmd(self, cmd):
         if self.topics.cmd.isValid(cmd) is False:
-            raise ValueError, ERROR_CMD
+            raise ValueError, BetelbotSimDriver.ERROR_CMD
         self.resetPath()
         self.cmd = cmd
 
