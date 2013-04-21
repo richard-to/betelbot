@@ -29,7 +29,7 @@ class BetelbotDriverServer(TCPServer):
     LOG_CONNECTION_REFUSED = 'Only one connection is allowed at a time'
 
     def __init__(self, io_loop=None, ssl_options=None, **kwargs):
-        logging.info(BetelbotDriver.LOG_SERVER_RUNNING)
+        logging.info(BetelbotDriverServer.LOG_SERVER_RUNNING)
         TCPServer.__init__(self, io_loop=io_loop, ssl_options=ssl_options, **kwargs)
         self.connection = None
 
@@ -37,7 +37,7 @@ class BetelbotDriverServer(TCPServer):
         if self.connection is None:
             self.connection = BetelbotDriverConnection(stream, address, None)
         else:
-            logging.info(BetelbotDriver.LOG_SERVER_RUNNING)
+            logging.info(BetelbotDriverServer.LOG_SERVER_RUNNING)
             stream.close()
 
 class BetelbotDriverConnection(Connection):
@@ -100,16 +100,16 @@ class BetelbotDriver(object):
 
     def setPower(self, power):
         if self.server.connection is None:
-            raise ValueError, ERROR_NO_CONNECTION
+            raise ValueError, BetelbotDriver.ERROR_NO_CONNECTION
 
         if self.topics.power.isValid(power) is False:
-            raise ValueError, ERROR_POWER
+            raise ValueError, BetelbotDriver.ERROR_POWER
 
         self.power = power
 
     def setMode(self, mode):
         if self.topics.mode.isValid(mode) is False:
-            raise ValueError, ERROR_MODE
+            raise ValueError, BetelbotDriver.ERROR_MODE
 
         if self.mode != mode:
             self.mode = mode
@@ -136,7 +136,7 @@ class BetelbotDriver(object):
 
     def setCmd(self, cmd):
         if self.topics.cmd.isValid(cmd) is False:
-            raise ValueError, ERROR_CMD
+            raise ValueError, BetelbotDriver.ERROR_CMD
         self.resetPath()
         self.cmd = cmd
 
