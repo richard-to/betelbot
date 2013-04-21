@@ -12,13 +12,10 @@ import numpy as np
 
 from tornado.ioloop import IOLoop
 
-import jsonrpc
-
 from client import BetelbotClientConnection
-from config import JsonConfig, DictConfig
-from jsonrpc import JsonRpcServer, JsonRpcConnection
-from pathfinder import PathfinderMethod, PathfinderSearchType
-from particle import Particle, ParticleFilterMethod, convertToMotion
+from config import JsonConfig
+from particle import Particle, convertToMotion
+from robot import RobotConnection, RobotMethod, RobotServer
 from topic import getTopicFactory
 from util import Client, signalHandler
 
@@ -171,147 +168,6 @@ class RoboSim(object):
 
     def manual(self):
         return self.mode == self.topics.mode.manual
-
-
-class RobotMethod(object):
-    # Methods supported by Robot server
-    POWER = 'robot_power'
-    MODE = 'robot_mode'
-    STATUS = 'robot_status'
-
-
-class RobotServer(JsonRpcServer):
-    # RoboSim server is a service that simulates Betelbot
-
-    # Log messages
-    LOG_SERVER_RUNNING = 'RoboSim Server is running'
-
-    # Accepted kwargs params
-    PARAM_MASTER_CONN= 'masterConn'
-    PARAM_ROBOT = 'robot'
-
-    def onInit(self, **kwargs):
-        logging.info(RobotServer.LOG_SERVER_RUNNING)
-
-        defaults = {
-            RobotServer.PARAM_MASTER_CONN: None,
-            RobotServer.PARAM_ROBOT: None
-        }
-
-        self.topics = getTopicFactory()
-
-        self.servicesFound = False
-
-        self.data.update(defaults, True)
-        self.data.update(kwargs, False)
-
-        self.robot = self.data.robot
-        self.masterConn = self.data.masterConn
-
-    def onListen(self, port):
-        self.port = port
-        self.masterConn.batchLocate(self.onBatchLocateResponse, [
-            ParticleFilterMethod.UPDATE,
-            PathfinderMethod.SEARCH
-        ])
-
-    def onBatchLocateResponse(self, found):
-        if found:
-            self.servicesFound = True
-            self.masterConn.subscribe(self.topics.cmd.id, self.onCmdPublished)
-            self.masterConn.subscribe(self.topics.location.id, self.onLocationPublished)
-            self.masterConn.subscribe(self.topics.waypoint.id, self.onWaypointPublished)
-            self.masterConn.register(RobotMethod.POWER, self.port)
-            self.masterConn.register(RobotMethod.MODE, self.port)
-            self.masterConn.register(RobotMethod.STATUS, self.port)
-
-    def onCmdPublished(self, topic, data):
-        cmd = data[0]
-        if self.robot.on() and self.robot.manual():
-            self.robot.setCmd(cmd)
-            robotData = self.robot.moveCmd()
-            if robotData is not None:
-                self.processRobotData(*robotData)
-
-    def onLocationPublished(self, topic, data):
-        if self.robot.on() and self.robot.manual() and self.topics.location.isValid(*data):
-            self.robot.setLocation(*data)
-
-    def onWaypointPublished(self, topic, data):
-        if self.robot.on() and self.robot.autonomous() and self.topics.waypoint.isValid(*data):
-            self.masterConn.pathfinder_search(self.onSearchResponse,
-                data[0], data[1], PathfinderSearchType.BOTH)
-
-    def onSearchResponse(self, result):
-        self.robot.setPath(*result)
-        robotData = self.robot.moveAuto()
-        if robotData is not None:
-            self.processRobotData(*robotData)
-
-    def onUpdateParticlesResponse(self, result):
-        if self.robot.on() and self.robot.autonomous():
-            robotData = self.robot.moveAuto()
-            if robotData is not None:
-                self.processRobotData(*robotData)
-
-    def processRobotData(self, motion, measurements, reset):
-        self.masterConn.publish(self.topics.sense.id, measurements)
-        self.masterConn.particles_update(self.onUpdateParticlesResponse, motion, measurements, reset)
-
-
-class RobotConnection(JsonRpcConnection):
-
-    # Log messages
-    LOG_NEW_CONNECTION = 'Received a new connection'
-    LOG_POWER_SET = 'Power set to "{}"'
-    LOG_MODE_SET = 'Mode set to "{}"'
-    LOG_STATUS = "Retrieving robot status: ({} {})"
-
-    def onInit(self):
-        self.logInfo(RobotConnection.LOG_NEW_CONNECTION)
-        self.masterConn = self.data.masterConn
-        self.robot = self.data.robot
-
-        self.topics = getTopicFactory()
-
-        self.methodHandlers = {
-            RobotMethod.POWER: self.handlePower,
-            RobotMethod.MODE: self.handleMode,
-            RobotMethod.STATUS: self.handleStatus
-        }
-        self.read()
-
-    def handleStatus(self, msg):
-        id = msg.get(jsonrpc.Key.ID, None)
-        if id:
-            status = self.robot.getStatus()
-            self.logInfo(RobotConnection.LOG_STATUS.format(*status))
-            self.masterConn.publish(self.topics.robot_status.id, *status)
-            self.write(self.encoder.response(id, *status))
-
-    def handleMode(self, msg):
-        id = msg.get(jsonrpc.Key.ID, None)
-        params = msg.get(jsonrpc.Key.PARAMS, [])
-        if id and self.topics.mode.isValid(*params):
-            try:
-                self.robot.setMode(params[0])
-                self.logInfo(RobotConnection.LOG_MODE_SET.format(self.robot.mode))
-                self.masterConn.publish(self.topics.mode.id, self.robot.mode)
-                self.write(self.encoder.response(id, self.robot.mode))
-            except ValueError:
-                pass
-
-    def handlePower(self, msg):
-        id = msg.get(jsonrpc.Key.ID, None)
-        params = msg.get(jsonrpc.Key.PARAMS, [])
-        if id and self.topics.power.isValid(*params):
-            try:
-                self.robot.setPower(params[0])
-                self.logInfo(RobotConnection.LOG_POWER_SET.format(self.robot.power))
-                self.masterConn.publish(self.topics.power.id, self.robot.power)
-                self.write(self.encoder.response(id, self.robot.power))
-            except ValueError:
-                pass
 
 
 def main():
