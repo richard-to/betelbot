@@ -11,10 +11,11 @@
         "socketUri": "/socket"
     },
     "robot": {
-        "driverPort": 8894,
-        "port": 8890,
+        "driverPort": 8890,
+        "port": 8894,
         "length": 10,
         "start": [0, 14]
+        "dist": 20
     },
     "pathfinder": {
         "port": 8891
