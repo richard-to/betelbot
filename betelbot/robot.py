@@ -242,9 +242,10 @@ class RobotDriver(object):
 
 class BetelbotDriver(RobotDriver):
 
-    def __init__(self, start, server):
+    def __init__(self, start, dist, server):
         super(BetelbotDriver, self).__init__(start)
         self.server = server
+        self.dist = dist
 
     def moveCmd(self, callback):
 
