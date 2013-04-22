@@ -364,7 +364,7 @@ def main():
 
     driverServer = BetelbotDriverServer()
     driverServer.listen(cfg.robot.driverPort)
-    driver = BetelbotDriver(cfg.robot.start, driverServer)
+    driver = BetelbotDriver(cfg.robot.start, cfg.robot.dist, driverServer)
 
     server = RobotServer(connection=RobotConnection, driver=driver, masterConn=conn)
     server.listen(cfg.robot.port)
