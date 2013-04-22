@@ -253,8 +253,24 @@ class BetelbotDriver(RobotDriver):
             callback(None, None, None)
             return
 
-        self.server.connection.move(callback, self.cmd)
+        cmdTopic = self.topics.cmd
+        pathDelta = {
+            cmdTopic.left: [0, -1],
+            cmdTopic.down: [1, 0],
+        }
+        newDelta = pathDelta[self.cmd]
+        x = self.current[1] + newDelta[1]
+        self.current = [y, x]
+
+        reset = False
+        if self.currentDirection is None:
+            self.currentDirection = self.cmd
+            reset = True
+        motion = convertToMotion(cmdTopic, self.currentDirection, self.cmd, self.dist)
         self.currentDirection = self.cmd
+
+        self.server.connection.sense(lambda Z: callback(motion, Z, reset), cmd)
+
         self.cmd = None
 
     def moveAuto(self, callback):
