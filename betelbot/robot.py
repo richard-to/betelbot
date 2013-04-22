@@ -257,8 +257,11 @@ class BetelbotDriver(RobotDriver):
         pathDelta = {
             cmdTopic.left: [0, -1],
             cmdTopic.down: [1, 0],
+            cmdTopic.up: [-1, 0],
+            cmdTopic.right: [0, 1]
         }
         newDelta = pathDelta[self.cmd]
+        y = self.current[0] + newDelta[0]
         x = self.current[1] + newDelta[1]
         self.current = [y, x]
 
@@ -278,10 +281,23 @@ class BetelbotDriver(RobotDriver):
         if not self.on() or self.path is None:
             callback(None, None, None)
             return
-        cmd = self.directions[self.moveIndex]
-        self.server.connection.move(callback, cmd)
-        self.currentDirection = cmd
-        self.moveIndex += 1
+
+        if self.moveIndex < len(self.path):
+            reset = False
+            dest = self.directions[self.moveIndex]
+            if self.moveIndex > 0:
+                start = self.directions[self.moveIndex - 1]
+            else:
+                start = dest
+                reset = True
+            motion = convertToMotion(self.topics.cmd, start, dest, self.gridsize)
+            self.currentDirection = dest
+
+            y, x = self.path[self.moveIndex]
+            self.server.connection.sense(lambda Z: callback(motion, Z, reset), cmd)
+            self.current = (y, x)
+
+            self.moveIndex += 1
 
     def setPower(self, power):
         if self.server.connection is None:
