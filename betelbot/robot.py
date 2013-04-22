@@ -334,6 +334,8 @@ class BetelbotDriverConnection(Connection):
     LOG_CONNECTED = 'Betelbot connected'
     LOG_RECEIVED = 'Received data'
 
+    SENSOR_READINGS = 3
+
     def onInit(self):
         self.logInfo(BetelbotDriverConnection.LOG_CONNECTED)
         self.callback = None
@@ -342,8 +344,8 @@ class BetelbotDriverConnection(Connection):
     def onRead(self, data):
         self.logInfo(BetelbotDriverConnection.LOG_RECEIVED)
         tokens = data.strip().split(" ")
-        if tokens[0] == 'm' and self.callback is not None:
-            self.callback(tokens[1])
+        if len(tokens) == BetelbotDriverConnection.SENSOR_READINGS and self.callback is not None:
+            self.callback(tokens)
         self.read()
 
     def move(self, callback, cmd):
