@@ -4,9 +4,9 @@
 #include <Arduino.h>
 #include <Servo.h>
 
-#define SCAN_LEFT 180
+#define SCAN_LEFT 160
 #define SCAN_FORWARD 90
-#define SCAN_RIGHT 0
+#define SCAN_RIGHT 20
 
 #define PING_SLEEP 0
 #define PING_SWEEP 1
@@ -28,7 +28,7 @@ public:
     long scan();
     void scanForward();
     void scanLeft();
-    void scanRight();  
+    void scanRight();
 private:
     Servo _base;
     int _status;
@@ -36,7 +36,7 @@ private:
     int _sweepDelayOneStep;
     int _sweepDelayTwoStep;
     int _sweepDelay;
-    unsigned long _startMillis;  
+    unsigned long _startMillis;
 };
 
 class ServoDriver {
@@ -62,11 +62,11 @@ public:
     void sleep();
     int status();
 private:
-    int _status;    
+    int _status;
     int _sensorPin;
     float _radius;
     int _resolution;
-    float _distance;    
+    float _distance;
     int _ticks;
     bool _color;
     int _boundB;
