@@ -17,7 +17,7 @@ void PingTurret::begin(Servo &base, const int sensorPin, int sweepDelay) {
 
 void PingTurret::sweep(int pos) {
     int currentPos = _base.read();
-    if ((pos > SCAN_FORWARD && currentPos < SCAN_FORWARD) || 
+    if ((pos > SCAN_FORWARD && currentPos < SCAN_FORWARD) ||
             pos < SCAN_FORWARD && currentPos > SCAN_FORWARD ) {
         _sweepDelay = _sweepDelayTwoStep;
     } else {
@@ -53,6 +53,7 @@ long PingTurret::scan() {
     digitalWrite(_sensorPin, LOW);
     pinMode(_sensorPin, INPUT);
     duration = pulseIn(_sensorPin, HIGH);
+    _status = PING_SLEEP;
     return microSecondsToCentimeters(duration);
 }
 
@@ -105,7 +106,7 @@ void ServoDriver::stop() {
 
 
 WheelEncoder::WheelEncoder() {
-    _ticks = 0;    
+    _ticks = 0;
     _status = ENCODER_SLEEP;
     _color = ENCODER_BLACK;
 }
@@ -136,14 +137,14 @@ void WheelEncoder::encode() {
     if (_status == ENCODER_SLEEP) {
         return;
     }
-    int value = analogRead(_sensorPin); 
+    int value = analogRead(_sensorPin);
     if (value < _boundB && _color == ENCODER_BLACK) {
         _color = ENCODER_WHITE;
         _ticks++;
     } else if (value >= _boundW && _color == ENCODER_WHITE) {
         _color = ENCODER_BLACK;
         _ticks++;
-    }   
+    }
 }
 
 void WheelEncoder::sleep() {
