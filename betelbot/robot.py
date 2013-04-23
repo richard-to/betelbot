@@ -6,6 +6,7 @@ import os
 import re
 import signal
 import sys
+import time
 from datetime import datetime
 
 from tornado.ioloop import IOLoop
@@ -18,7 +19,7 @@ from client import BetelbotClientConnection
 from config import JsonConfig, DictConfig
 from jsonrpc import JsonRpcServer, JsonRpcConnection
 from pathfinder import PathfinderMethod, PathfinderSearchType
-from particle import Particle, ParticleFilterMethod, convertToMotion
+from particle import Particle, ParticleFilterMethod, convertToMotion, normalizeCmd
 from topic import getTopicFactory
 from util import Client, Connection, signalHandler
 
@@ -272,9 +273,14 @@ class BetelbotDriver(RobotDriver):
         motion = convertToMotion(cmdTopic, self.currentDirection, self.cmd, self.dist)
         self.currentDirection = self.cmd
 
-        self.server.connection.sense(lambda Z: callback(motion, Z, reset), self.cmd)
-
+        cmd = self.cmd
         self.cmd = None
+
+        formatMeasurements = self.formatMeasurements
+        self.server.connection.sense(
+            lambda Z: callback(motion, formatMeasurements(cmd, Z), reset),
+            normalizeCmd(self.topics.cmd, motion[0]))
+
 
     def moveAuto(self, callback):
 
@@ -283,6 +289,9 @@ class BetelbotDriver(RobotDriver):
             return
 
         if self.moveIndex < len(self.path):
+
+            time.sleep(3)
+
             reset = False
             dest = self.directions[self.moveIndex]
             if self.moveIndex > 0:
@@ -290,14 +299,29 @@ class BetelbotDriver(RobotDriver):
             else:
                 start = dest
                 reset = True
-            motion = convertToMotion(self.topics.cmd, start, dest, self.gridsize)
+            motion = convertToMotion(self.topics.cmd, start, dest, self.dist)
             self.currentDirection = dest
 
             y, x = self.path[self.moveIndex]
-            self.server.connection.sense(lambda Z: callback(motion, Z, reset), dest)
             self.current = (y, x)
-
             self.moveIndex += 1
+
+            formatMeasurements = self.formatMeasurements
+            self.server.connection.sense(
+                lambda Z: callback(motion, formatMeasurements(dest, Z), reset),
+                normalizeCmd(self.topics.cmd, motion[0]))
+
+    def formatMeasurements(self, cmd, Z):
+        cmdTopic = self.topics.cmd
+        if cmd == cmdTopic.left:
+            measurements = [Z[1], Z[2], Z[0], None]
+        elif cmd == cmdTopic.down:
+            measurements = [Z[2], None, Z[1], Z[0]]
+        elif cmd == cmdTopic.up:
+            measurements = [Z[0], Z[1], None, Z[2]]
+        elif cmd == cmdTopic.right:
+            measurements = [None, Z[0], Z[2], Z[1]]
+        return measurements
 
     def setPower(self, power):
         if self.server.connection is None:
@@ -334,7 +358,7 @@ class BetelbotDriverConnection(Connection):
     LOG_CONNECTED = 'Betelbot connected'
     LOG_RECEIVED = 'Received data'
 
-    SENSOR_READINGS = 4
+    SENSOR_READINGS = 3
 
     MSG_STRIP = " \x00"
     MSG_SPLIT = " "
@@ -348,23 +372,14 @@ class BetelbotDriverConnection(Connection):
         self.logInfo(BetelbotDriverConnection.LOG_RECEIVED)
         data = data.strip(BetelbotDriverConnection.MSG_STRIP)
         tokens = data.split(BetelbotDriverConnection.MSG_SPLIT)
-        cmd = tokens.pop(0)
         tokens = [int(token) for token in tokens]
-        if cmd == 'h':
-            measurements = [tokens[1], tokens[2], tokens[0], None]
-        elif cmd == 'j':
-            measurements = [tokens[2], None, tokens[1], tokens[0]]
-        elif cmd == 'k':
-            measurements = [tokens[0], tokens[1], None, tokens[2]]
-        elif cmd == 'l':
-            measurements = [None, tokens[0], tokens[2], tokens[1]]
-
-        if len(measurements) == BetelbotDriverConnection.SENSOR_READINGS and self.callback is not None:
-            self.callback(measurements)
+        if len(tokens) == BetelbotDriverConnection.SENSOR_READINGS and self.callback is not None:
+            self.callback(tokens)
         self.read()
 
     def sense(self, callback, cmd):
         self.callback = callback
+        print cmd
         self.write(cmd)
 
 
