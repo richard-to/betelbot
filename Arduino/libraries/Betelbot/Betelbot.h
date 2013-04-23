@@ -4,9 +4,9 @@
 #include <Arduino.h>
 #include <Servo.h>
 
-#define SCAN_LEFT 160
+#define SCAN_LEFT 178
 #define SCAN_FORWARD 90
-#define SCAN_RIGHT 20
+#define SCAN_RIGHT 2
 
 #define PING_SLEEP 0
 #define PING_SWEEP 1
