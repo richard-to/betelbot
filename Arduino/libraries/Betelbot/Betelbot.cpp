@@ -29,9 +29,7 @@ void PingTurret::sweep(int pos) {
 }
 
 void PingTurret::sleep() {
-    if (_status == PING_READY) {
-        _status = PING_SLEEP;
-    }
+    _status = PING_SLEEP;
 }
 
 int PingTurret::status() {
