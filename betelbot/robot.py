@@ -272,7 +272,7 @@ class BetelbotDriver(RobotDriver):
         motion = convertToMotion(cmdTopic, self.currentDirection, self.cmd, self.dist)
         self.currentDirection = self.cmd
 
-        self.server.connection.sense(lambda Z: callback(motion, Z, reset), cmd)
+        self.server.connection.sense(lambda Z: callback(motion, Z, reset), self.cmd)
 
         self.cmd = None
 
@@ -294,7 +294,7 @@ class BetelbotDriver(RobotDriver):
             self.currentDirection = dest
 
             y, x = self.path[self.moveIndex]
-            self.server.connection.sense(lambda Z: callback(motion, Z, reset), cmd)
+            self.server.connection.sense(lambda Z: callback(motion, Z, reset), dest)
             self.current = (y, x)
 
             self.moveIndex += 1
@@ -348,7 +348,7 @@ class BetelbotDriverConnection(Connection):
             self.callback(tokens)
         self.read()
 
-    def move(self, callback, cmd):
+    def sense(self, callback, cmd):
         self.callback = callback
         self.write(cmd)
 
