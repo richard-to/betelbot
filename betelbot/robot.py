@@ -334,7 +334,10 @@ class BetelbotDriverConnection(Connection):
     LOG_CONNECTED = 'Betelbot connected'
     LOG_RECEIVED = 'Received data'
 
-    SENSOR_READINGS = 3
+    SENSOR_READINGS = 4
+
+    MSG_STRIP = " \x00"
+    MSG_SPLIT = " "
 
     def onInit(self):
         self.logInfo(BetelbotDriverConnection.LOG_CONNECTED)
@@ -343,9 +346,21 @@ class BetelbotDriverConnection(Connection):
 
     def onRead(self, data):
         self.logInfo(BetelbotDriverConnection.LOG_RECEIVED)
-        tokens = data.strip().split(" ")
-        if len(tokens) == BetelbotDriverConnection.SENSOR_READINGS and self.callback is not None:
-            self.callback(tokens)
+        data = data.strip(BetelbotDriverConnection.MSG_STRIP)
+        tokens = data.split(BetelbotDriverConnection.MSG_SPLIT)
+        cmd = tokens.pop(0)
+        tokens = [int(token) for token in tokens]
+        if cmd == 'h':
+            measurements = [tokens[1], tokens[2], tokens[0], None]
+        elif cmd == 'j':
+            measurements = [tokens[2], None, tokens[1], tokens[0]]
+        elif cmd == 'k':
+            measurements = [tokens[0], tokens[1], None, tokens[2]]
+        elif cmd == 'l':
+            measurements = [None, tokens[0], tokens[2], tokens[1]]
+
+        if len(measurements) == BetelbotDriverConnection.SENSOR_READINGS and self.callback is not None:
+            self.callback(measurements)
         self.read()
 
     def sense(self, callback, cmd):
