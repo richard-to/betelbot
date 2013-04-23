@@ -22,6 +22,16 @@ from topic.default import ParticleTopic
 from util import Client, signalHandler
 
 
+def normalizeCmd(cmdTopic, rotation):
+    if rotation == 0:
+        cmd = cmdTopic.up
+    elif rotation > 0:
+        cmd = cmdTopic.right
+    elif rotation < 0:
+        cmd = cmdTopic.left
+    return cmd
+
+
 def convertToMotion(cmdTopic, start, dest, gridsize):
     # In the particle filter we need to know the orientation
     # of the robot. The catch is that it wants the rotation in
