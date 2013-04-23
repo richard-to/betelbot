@@ -101,6 +101,7 @@ class RobotServer(JsonRpcServer):
 
     def processRobotData(self, motion, measurements, reset):
         if motion is not None and measurements is not None and reset is not None:
+            print measurements
             self.masterConn.publish(self.topics.sense.id, measurements)
             self.masterConn.particles_update(self.onUpdateParticlesResponse, motion, measurements, reset)
 
@@ -314,13 +315,13 @@ class BetelbotDriver(RobotDriver):
     def formatMeasurements(self, cmd, Z):
         cmdTopic = self.topics.cmd
         if cmd == cmdTopic.left:
-            measurements = [Z[1], Z[2], Z[0], None]
+            measurements = [Z[1], Z[0], Z[2], None]
         elif cmd == cmdTopic.down:
-            measurements = [Z[2], None, Z[1], Z[0]]
+            measurements = [Z[2], Z[1], None, Z[0]]
         elif cmd == cmdTopic.up:
-            measurements = [Z[0], Z[1], None, Z[2]]
+            measurements = [Z[0], None, Z[1], Z[2]]
         elif cmd == cmdTopic.right:
-            measurements = [None, Z[0], Z[2], Z[1]]
+            measurements = [None, Z[2], Z[0], Z[1]]
         return measurements
 
     def setPower(self, power):
@@ -379,7 +380,6 @@ class BetelbotDriverConnection(Connection):
 
     def sense(self, callback, cmd):
         self.callback = callback
-        print cmd
         self.write(cmd)
 
 
