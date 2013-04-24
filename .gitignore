@@ -4,3 +4,10 @@
 *.swp
 settings.h
 .betelbotrc
+.metadata
+bin
+.settings
+.classpath
+project.properties
+gen
+proguard-project.txt
