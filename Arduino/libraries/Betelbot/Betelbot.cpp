@@ -79,7 +79,7 @@ void ServoDriver::begin(Servo &left, Servo &right) {
 
 void ServoDriver::forward() {
     _right.write(180);
-    _left.write(0);
+    _left.write(65);
 }
 
 void ServoDriver::reverse() {
